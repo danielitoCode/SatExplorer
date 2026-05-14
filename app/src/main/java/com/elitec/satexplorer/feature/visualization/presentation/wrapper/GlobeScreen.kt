@@ -1,9 +1,11 @@
 package com.elitec.satexplorer.feature.visualization.presentation.wrapper
 
 import android.opengl.GLSurfaceView
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.elitec.satexplorer.feature.tracking.domain.entity.Vector3D
@@ -16,7 +18,8 @@ import org.koin.compose.koinInject
 @Composable
 fun GlobeScreen(
     viewModel: VisualizationViewModel = koinInject(),
-    renderer: GlSurfaceRenderer = koinInject()
+    renderer: GlSurfaceRenderer = koinInject(),
+    modifier: Modifier = Modifier
 ) {
 
     val context = LocalContext.current
@@ -30,6 +33,7 @@ fun GlobeScreen(
     }
 
     AndroidView(
+        modifier = Modifier.fillMaxSize(),
         factory = { glView }
     )
 
