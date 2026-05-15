@@ -74,6 +74,18 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     // Simple Math
     implementation(libs.ejml.simple)
+    // Icons
+    implementation(libs.androidx.icons.extended)
+    // Toast
+    implementation(libs.multiplatform.toast)
+    // Lotties
+    implementation(libs.lotties.compose)
+    // Google Credential
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    // Permission
+    implementation(libs.compose.permission)
 
     // Test
     testImplementation(libs.junit)
