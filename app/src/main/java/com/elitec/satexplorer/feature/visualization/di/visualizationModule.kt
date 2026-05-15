@@ -15,7 +15,7 @@ val visualizationModule = module {
     single { RenderStateHolder() }
 
     // OPENGL ENGINE
-    single { OpenGlRendererEngine() }
+    single { OpenGlRendererEngine(get()) }
 
     // USE CASES
     factory { BuildSceneGraphUseCase() }

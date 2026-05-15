@@ -1,6 +1,9 @@
 package com.elitec.satexplorer.feature.visualization.data.renderEngine
 
+import android.content.Context
+import android.graphics.BitmapFactory
 import android.opengl.GLES20
+import android.opengl.GLUtils
 import android.opengl.Matrix
 import com.elitec.satexplorer.feature.visualization.domain.entity.RenderCommand
 import com.elitec.satexplorer.feature.visualization.domain.entity.RenderObjectType
@@ -8,29 +11,36 @@ import com.elitec.satexplorer.feature.visualization.domain.entity.TransformMatri
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
-import kotlin.collections.listOf
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
 
-class OpenGlRendererEngine {
+class OpenGlRendererEngine(
+    private val context: Context
+) {
     private var currentModelMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
     private val projectionMatrix = FloatArray(16)
     private val mvMatrix = FloatArray(16)
     private val mvpMatrix = FloatArray(16)
-    private var cameraDistance = 3.6f
+
+    private var cameraDistance = 3.2f
     private var cameraYaw = 0f
     private var cameraPitch = 18f
+
     private var programId: Int = 0
     private var positionHandle: Int = -1
-    private var colorHandle: Int = -1
+    private var texCoordHandle: Int = -1
     private var mvpHandle: Int = -1
     private var planetDetailHandle: Int = -1
-    private lateinit var sphereVertices: FloatBuffer
+    private var sunDirectionHandle: Int = -1
+    private var earthTexHandle: Int = -1
+
+    private lateinit var sphereInterleaved: FloatBuffer
     private var sphereVertexCount: Int = 0
     private lateinit var satelliteVertices: FloatBuffer
     private var satelliteVertexCount: Int = 0
+    private var earthTextureId: Int = 0
 
     fun init() {
         Matrix.setIdentityM(currentModelMatrix, 0)
@@ -38,14 +48,17 @@ class OpenGlRendererEngine {
 
         programId = createProgram(VERTEX_SHADER, FRAGMENT_SHADER)
         positionHandle = GLES20.glGetAttribLocation(programId, "aPosition")
-        colorHandle = GLES20.glGetUniformLocation(programId, "uColor")
+        texCoordHandle = GLES20.glGetAttribLocation(programId, "aTexCoord")
         mvpHandle = GLES20.glGetUniformLocation(programId, "uMvp")
         planetDetailHandle = GLES20.glGetUniformLocation(programId, "uPlanetDetail")
+        sunDirectionHandle = GLES20.glGetUniformLocation(programId, "uSunDirection")
+        earthTexHandle = GLES20.glGetUniformLocation(programId, "uEarthTex")
 
-        sphereVertices = createSphereVertexBuffer(48, 48)
-        sphereVertexCount = sphereVertices.limit() / COORDS_PER_VERTEX
+        sphereInterleaved = createSphereInterleavedBuffer(stacks = 96, slices = 128)
+        sphereVertexCount = sphereInterleaved.limit() / SPHERE_STRIDE_FLOATS
         satelliteVertices = createCubeVertexBuffer()
         satelliteVertexCount = satelliteVertices.limit() / COORDS_PER_VERTEX
+        earthTextureId = loadEarthTexture()
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glEnable(GLES20.GL_CULL_FACE)
@@ -55,51 +68,66 @@ class OpenGlRendererEngine {
     fun onViewportChanged(width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
         val aspect = width.toFloat() / height.coerceAtLeast(1)
-        Matrix.perspectiveM(projectionMatrix, 0, 45f, aspect, 0.1f, 100f)
+        Matrix.perspectiveM(projectionMatrix, 0, 42f, aspect, 0.1f, 100f)
     }
 
     fun setCameraZoom(scaleFactor: Float) {
-        cameraDistance = (cameraDistance / max(scaleFactor, 0.2f)).coerceIn(1.4f, 12f)
+        cameraDistance = (cameraDistance / max(scaleFactor, 0.2f)).coerceIn(1.25f, 10f)
         updateCameraView()
     }
 
     fun orbitCamera(deltaX: Float, deltaY: Float) {
-        cameraYaw += deltaX * 0.22f
-        cameraPitch = (cameraPitch + deltaY * 0.18f).coerceIn(-80f, 80f)
+        cameraYaw += deltaX * 0.18f
+        cameraPitch = (cameraPitch + deltaY * 0.14f).coerceIn(-85f, 85f)
         updateCameraView()
     }
 
     fun render(commands: List<RenderCommand>) {
         GLES20.glUseProgram(programId)
+        val sunDirection = calculateSunDirection()
+        GLES20.glUniform3f(sunDirectionHandle, sunDirection[0], sunDirection[1], sunDirection[2])
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, earthTextureId)
+        GLES20.glUniform1i(earthTexHandle, 0)
         commands.forEach { command ->
             when (command) {
                 is RenderCommand.SetMatrix -> setMatrix(command.matrix)
                 is RenderCommand.SetTexture -> Unit
-                is RenderCommand.DrawMesh -> drawMesh(command.objectType, command.tint)
+                is RenderCommand.DrawMesh -> drawMesh(command.objectType)
             }
         }
     }
 
-    private fun setMatrix(matrix: TransformMatrix) {
-        currentModelMatrix = matrix.values
-    }
+    private fun setMatrix(matrix: TransformMatrix) { currentModelMatrix = matrix.values }
 
-    private fun drawMesh(type: RenderObjectType, tint: FloatArray) {
+    private fun drawMesh(type: RenderObjectType) {
         Matrix.multiplyMM(mvMatrix, 0, viewMatrix, 0, currentModelMatrix, 0)
         Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, mvMatrix, 0)
         GLES20.glUniformMatrix4fv(mvpHandle, 1, false, mvpMatrix, 0)
-        GLES20.glUniform4fv(colorHandle, 1, tint, 0)
-        val meshSelection = when (type) {
-            RenderObjectType.GLOBE -> MeshSelection(sphereVertices, sphereVertexCount, GLES20.GL_TRIANGLES, 1f)
-            RenderObjectType.SATELLITE -> MeshSelection(satelliteVertices, satelliteVertexCount, GLES20.GL_TRIANGLES, 0f)
-            else -> MeshSelection(satelliteVertices, satelliteVertexCount, GLES20.GL_TRIANGLES, 0f)
+
+        when (type) {
+            RenderObjectType.GLOBE -> {
+                GLES20.glUniform1f(planetDetailHandle, 1f)
+                sphereInterleaved.position(0)
+                GLES20.glEnableVertexAttribArray(positionHandle)
+                GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, SPHERE_STRIDE_BYTES, sphereInterleaved)
+                sphereInterleaved.position(3)
+                GLES20.glEnableVertexAttribArray(texCoordHandle)
+                GLES20.glVertexAttribPointer(texCoordHandle, 2, GLES20.GL_FLOAT, false, SPHERE_STRIDE_BYTES, sphereInterleaved)
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, sphereVertexCount)
+            }
+            else -> {
+                GLES20.glUniform1f(planetDetailHandle, 0f)
+                satelliteVertices.position(0)
+                GLES20.glEnableVertexAttribArray(positionHandle)
+                GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, STRIDE_BYTES, satelliteVertices)
+                GLES20.glDisableVertexAttribArray(texCoordHandle)
+                GLES20.glVertexAttrib2f(texCoordHandle, 0f, 0f)
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, satelliteVertexCount)
+            }
         }
-        GLES20.glUniform1f(planetDetailHandle, meshSelection.planetDetail)
-        meshSelection.buffer.position(0)
-        GLES20.glEnableVertexAttribArray(positionHandle)
-        GLES20.glVertexAttribPointer(positionHandle, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, STRIDE_BYTES, meshSelection.buffer)
-        GLES20.glDrawArrays(meshSelection.mode, 0, meshSelection.count)
         GLES20.glDisableVertexAttribArray(positionHandle)
+        GLES20.glDisableVertexAttribArray(texCoordHandle)
     }
 
     private fun updateCameraView() {
@@ -109,6 +137,70 @@ class OpenGlRendererEngine {
         val y = (cameraDistance * sin(pitchRad)).toFloat()
         val z = (cameraDistance * cos(pitchRad) * cos(yawRad)).toFloat()
         Matrix.setLookAtM(viewMatrix, 0, x, y, z, 0f, 0f, 0f, 0f, 1f, 0f)
+    }
+
+    private fun calculateSunDirection(): FloatArray {
+        val millisInDay = 86_400_000L
+        val utcMillis = System.currentTimeMillis() % millisInDay
+        val angle = ((utcMillis.toFloat() / millisInDay.toFloat()) * Math.PI * 2.0).toFloat()
+        val x = cos(angle)
+        val y = 0.18f
+        val z = sin(angle)
+        val len = kotlin.math.sqrt(x * x + y * y + z * z).coerceAtLeast(0.0001f)
+        return floatArrayOf(x / len, y / len, z / len)
+    }
+
+    private fun loadEarthTexture(): Int {
+        val resId = context.resources.getIdentifier("earth_day_4k", "drawable", context.packageName)
+        require(resId != 0) { "Missing drawable resource: earth_day_4k (equirectangular Earth map)." }
+
+        val bitmap = BitmapFactory.decodeResource(context.resources, resId)
+            ?: error("Failed to decode earth_day_4k texture")
+
+        val ids = IntArray(1)
+        GLES20.glGenTextures(1, ids, 0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, ids[0])
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
+        bitmap.recycle()
+        return ids[0]
+    }
+
+    private fun createSphereInterleavedBuffer(stacks: Int, slices: Int): FloatBuffer {
+        val data = mutableListOf<Float>()
+        for (stack in 0 until stacks) {
+            val v1 = stack.toFloat() / stacks.toFloat()
+            val v2 = (stack + 1).toFloat() / stacks.toFloat()
+            val phi1 = Math.PI * v1 - Math.PI / 2.0
+            val phi2 = Math.PI * v2 - Math.PI / 2.0
+            for (slice in 0 until slices) {
+                val u1 = slice.toFloat() / slices.toFloat()
+                val u2 = (slice + 1).toFloat() / slices.toFloat()
+                val theta1 = 2.0 * Math.PI * u1
+                val theta2 = 2.0 * Math.PI * u2
+
+                val p1 = point(phi1, theta1)
+                val p2 = point(phi2, theta1)
+                val p3 = point(phi2, theta2)
+                val p4 = point(phi1, theta2)
+
+                addVertex(data, p1, u1, 1f - v1)
+                addVertex(data, p2, u1, 1f - v2)
+                addVertex(data, p3, u2, 1f - v2)
+
+                addVertex(data, p1, u1, 1f - v1)
+                addVertex(data, p3, u2, 1f - v2)
+                addVertex(data, p4, u2, 1f - v1)
+            }
+        }
+        return createFloatBuffer(data.toFloatArray())
+    }
+
+    private fun addVertex(target: MutableList<Float>, p: FloatArray, u: Float, v: Float) {
+        target.add(p[0]); target.add(p[1]); target.add(p[2]); target.add(u); target.add(v)
     }
 
     private fun createCubeVertexBuffer(): FloatBuffer {
@@ -121,25 +213,6 @@ class OpenGlRendererEngine {
             -1f,-1f,-1f, 1f,-1f,-1f, 1f,-1f, 1f,  -1f,-1f,-1f, 1f,-1f, 1f, -1f,-1f, 1f
         )
         return createFloatBuffer(vertices)
-    }
-
-    private fun createSphereVertexBuffer(stacks: Int, slices: Int): FloatBuffer {
-        val vertices = mutableListOf<Float>()
-        for (stack in 0 until stacks) {
-            val phi1 = Math.PI * stack / stacks - Math.PI / 2.0
-            val phi2 = Math.PI * (stack + 1) / stacks - Math.PI / 2.0
-            for (slice in 0 until slices) {
-                val theta1 = 2.0 * Math.PI * slice / slices
-                val theta2 = 2.0 * Math.PI * (slice + 1) / slices
-                val p1 = point(phi1, theta1)
-                val p2 = point(phi2, theta1)
-                val p3 = point(phi2, theta2)
-                val p4 = point(phi1, theta2)
-                vertices.addAll(listOf(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2], p3[0], p3[1], p3[2]))
-                vertices.addAll(listOf(p1[0], p1[1], p1[2], p3[0], p3[1], p3[2], p4[0], p4[1], p4[2]))
-            }
-        }
-        return createFloatBuffer(vertices.toFloatArray())
     }
 
     private fun point(phi: Double, theta: Double): FloatArray {
@@ -173,18 +246,13 @@ class OpenGlRendererEngine {
         return shader
     }
 
-    private data class MeshSelection(
-        val buffer: FloatBuffer,
-        val count: Int,
-        val mode: Int,
-        val planetDetail: Float
-    )
-
     companion object {
         private const val COORDS_PER_VERTEX = 3
         private const val STRIDE_BYTES = COORDS_PER_VERTEX * 4
+        private const val SPHERE_STRIDE_FLOATS = 5
+        private const val SPHERE_STRIDE_BYTES = SPHERE_STRIDE_FLOATS * 4
 
-        private const val VERTEX_SHADER = "attribute vec3 aPosition; uniform mat4 uMvp; varying vec3 vPos; void main(){ vPos = normalize(aPosition); gl_Position = uMvp * vec4(aPosition,1.0); }"
-        private const val FRAGMENT_SHADER = "precision mediump float; uniform vec4 uColor; uniform float uPlanetDetail; varying vec3 vPos; void main(){ if (uPlanetDetail < 0.5) { gl_FragColor = uColor; return; } vec3 n = normalize(vPos); float light = clamp(dot(n, normalize(vec3(0.5,0.4,1.0))), 0.12, 1.0); float lat = asin(n.y); float lon = atan(n.z, n.x); float continents = sin(lon*3.0)*cos(lat*4.0) + sin(lon*7.0 + lat*2.0)*0.35; vec3 ocean = vec3(0.06,0.22,0.55); vec3 land = vec3(0.18,0.47,0.20); float mask = smoothstep(0.18, 0.34, continents); vec3 base = mix(ocean, land, mask); float ice = smoothstep(1.05, 1.3, abs(lat)*2.0); base = mix(base, vec3(0.88,0.92,0.96), ice*0.7); vec3 color = base * light; gl_FragColor = vec4(color, 1.0); }"
+        private const val VERTEX_SHADER = "attribute vec3 aPosition; attribute vec2 aTexCoord; uniform mat4 uMvp; varying vec3 vWorld; varying vec2 vTexCoord; void main(){ vWorld = normalize(aPosition); vTexCoord = aTexCoord; gl_Position = uMvp * vec4(aPosition,1.0); }"
+        private const val FRAGMENT_SHADER = "precision mediump float; uniform float uPlanetDetail; uniform vec3 uSunDirection; uniform sampler2D uEarthTex; varying vec3 vWorld; varying vec2 vTexCoord; void main(){ if (uPlanetDetail < 0.5) { gl_FragColor = vec4(0.9,0.9,0.9,1.0); return; } vec3 albedo = texture2D(uEarthTex, vTexCoord).rgb; vec3 n = normalize(vWorld); float ndotl = dot(n, normalize(uSunDirection)); float dayFactor = smoothstep(-0.08, 0.18, ndotl); float diffuse = clamp(ndotl, 0.0, 1.0); float ambient = 0.07; vec3 lit = albedo * (ambient + diffuse * 0.93); vec3 night = albedo * 0.08; vec3 color = mix(night, lit, dayFactor); gl_FragColor = vec4(color, 1.0); }"
     }
 }
