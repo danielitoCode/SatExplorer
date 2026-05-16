@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -27,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,6 +58,7 @@ fun LoginScreen(
             tonalElevation = 5.dp
         ) {
             Image(
+                contentScale = ContentScale.Crop,
                 painter = painterResource(R.drawable.icon2),
                 contentDescription = "App icon",
                 modifier = Modifier.size(140.dp)
@@ -113,8 +118,10 @@ fun LoginScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "@"
+                            Icon(
+                                modifier = Modifier.padding(vertical = 3.dp),
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "lock"
                             )
                             Text(
                                 text = "PASSWORD"

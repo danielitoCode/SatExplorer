@@ -19,6 +19,10 @@ class VisualizationViewModel(
 
     val renderObjects = _renderObjects.asStateFlow()
 
+    private val _controlsState = MutableStateFlow(ControlsState())
+    val controlsState = _controlsState.asStateFlow()
+
+
     init {
         viewModelScope.launch {
             renderObjects.collect { objects ->
@@ -33,4 +37,30 @@ class VisualizationViewModel(
     fun setObjects(objects: List<RenderObject>) {
         _renderObjects.value = objects
     }
+
+    fun rotateLeft() {
+        _controlsState.value = _controlsState.value.copy(yaw = _controlsState.value.yaw - 8f)
+    }
+
+    fun rotateRight() {
+        _controlsState.value = _controlsState.value.copy(yaw = _controlsState.value.yaw + 8f)
+    }
+
+    fun rotateUp() {
+        _controlsState.value = _controlsState.value.copy(pitch = (_controlsState.value.pitch + 6f).coerceIn(-85f, 85f))
+    }
+
+    fun rotateDown() {
+        _controlsState.value = _controlsState.value.copy(pitch = (_controlsState.value.pitch - 6f).coerceIn(-85f, 85f))
+    }
+
+    fun updateZoom(distance: Float) {
+        _controlsState.value = _controlsState.value.copy(cameraDistance = distance.coerceIn(1.25f, 10f))
+    }
+
+    data class ControlsState(
+        val yaw: Float = 0f,
+        val pitch: Float = 18f,
+        val cameraDistance: Float = 3.2f
+    )
 }

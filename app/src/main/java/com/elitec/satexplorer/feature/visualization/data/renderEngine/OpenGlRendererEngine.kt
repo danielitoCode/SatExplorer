@@ -34,13 +34,16 @@ class OpenGlRendererEngine(
     private var mvpHandle: Int = -1
     private var planetDetailHandle: Int = -1
     private var sunDirectionHandle: Int = -1
-    private var earthTexHandle: Int = -1
+    private var earthDayTexHandle: Int = -1
+    private var earthNightTexHandle: Int = -1
+    private val globeAlignedModelMatrix = FloatArray(16)
 
     private lateinit var sphereInterleaved: FloatBuffer
     private var sphereVertexCount: Int = 0
     private lateinit var satelliteVertices: FloatBuffer
     private var satelliteVertexCount: Int = 0
-    private var earthTextureId: Int = 0
+    private var earthDayTextureId: Int = 0
+    private var earthNightTextureId: Int = 0
 
     fun init() {
         Matrix.setIdentityM(currentModelMatrix, 0)
@@ -52,13 +55,15 @@ class OpenGlRendererEngine(
         mvpHandle = GLES20.glGetUniformLocation(programId, "uMvp")
         planetDetailHandle = GLES20.glGetUniformLocation(programId, "uPlanetDetail")
         sunDirectionHandle = GLES20.glGetUniformLocation(programId, "uSunDirection")
-        earthTexHandle = GLES20.glGetUniformLocation(programId, "uEarthTex")
+        earthDayTexHandle = GLES20.glGetUniformLocation(programId, "uEarthDayTex")
+        earthNightTexHandle = GLES20.glGetUniformLocation(programId, "uEarthNightTex")
 
         sphereInterleaved = createSphereInterleavedBuffer(stacks = 96, slices = 128)
         sphereVertexCount = sphereInterleaved.limit() / SPHERE_STRIDE_FLOATS
         satelliteVertices = createCubeVertexBuffer()
         satelliteVertexCount = satelliteVertices.limit() / COORDS_PER_VERTEX
-        earthTextureId = loadEarthTexture()
+        earthDayTextureId = loadEarthTexture("earth_day_8k", "earth_daymap")
+        earthNightTextureId = loadEarthTexture("earth_night_8k", "earth_nightmap")
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glEnable(GLES20.GL_CULL_FACE)
@@ -71,6 +76,16 @@ class OpenGlRendererEngine(
         Matrix.perspectiveM(projectionMatrix, 0, 42f, aspect, 0.1f, 100f)
     }
 
+    fun setCameraDistance(distance: Float) {
+        cameraDistance = distance.coerceIn(1.25f, 10f)
+        updateCameraView()
+    }
+
+    fun setCameraOrbit(yaw: Float, pitch: Float) {
+        cameraYaw = yaw
+        cameraPitch = pitch.coerceIn(-85f, 85f)
+        updateCameraView()
+    }
     fun setCameraZoom(scaleFactor: Float) {
         cameraDistance = (cameraDistance / max(scaleFactor, 0.2f)).coerceIn(1.25f, 10f)
         updateCameraView()
@@ -87,8 +102,11 @@ class OpenGlRendererEngine(
         val sunDirection = calculateSunDirection()
         GLES20.glUniform3f(sunDirectionHandle, sunDirection[0], sunDirection[1], sunDirection[2])
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, earthTextureId)
-        GLES20.glUniform1i(earthTexHandle, 0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, earthDayTextureId)
+        GLES20.glUniform1i(earthDayTexHandle, 0)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, earthNightTextureId)
+        GLES20.glUniform1i(earthNightTexHandle, 1)
         commands.forEach { command ->
             when (command) {
                 is RenderCommand.SetMatrix -> setMatrix(command.matrix)
@@ -101,7 +119,14 @@ class OpenGlRendererEngine(
     private fun setMatrix(matrix: TransformMatrix) { currentModelMatrix = matrix.values }
 
     private fun drawMesh(type: RenderObjectType) {
-        Matrix.multiplyMM(mvMatrix, 0, viewMatrix, 0, currentModelMatrix, 0)
+        val modelMatrix = if (type == RenderObjectType.GLOBE) {
+            Matrix.rotateM(globeAlignedModelMatrix, 0, currentModelMatrix, 0, INITIAL_GLOBE_YAW_DEGREES, 0f, 1f, 0f)
+            globeAlignedModelMatrix
+        } else {
+            currentModelMatrix
+        }
+
+        Matrix.multiplyMM(mvMatrix, 0, viewMatrix, 0, modelMatrix, 0)
         Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, mvMatrix, 0)
         GLES20.glUniformMatrix4fv(mvpHandle, 1, false, mvpMatrix, 0)
 
@@ -150,12 +175,15 @@ class OpenGlRendererEngine(
         return floatArrayOf(x / len, y / len, z / len)
     }
 
-    private fun loadEarthTexture(): Int {
-        val resId = context.resources.getIdentifier("earth_day_4k", "drawable", context.packageName)
-        require(resId != 0) { "Missing drawable resource: earth_day_4k (equirectangular Earth map)." }
+    private fun loadEarthTexture(vararg resourceNames: String): Int {
+        val selectedName = resourceNames.firstOrNull {
+            context.resources.getIdentifier(it, "drawable", context.packageName) != 0
+        } ?: error("Missing drawable resource. Tried: ${resourceNames.joinToString()} (equirectangular Earth map).")
+
+        val resId = context.resources.getIdentifier(selectedName, "drawable", context.packageName)
 
         val bitmap = BitmapFactory.decodeResource(context.resources, resId)
-            ?: error("Failed to decode earth_day_4k texture")
+            ?: error("Failed to decode $selectedName texture")
 
         val ids = IntArray(1)
         GLES20.glGenTextures(1, ids, 0)
@@ -200,7 +228,7 @@ class OpenGlRendererEngine(
     }
 
     private fun addVertex(target: MutableList<Float>, p: FloatArray, u: Float, v: Float) {
-        target.add(p[0]); target.add(p[1]); target.add(p[2]); target.add(u); target.add(v)
+        target.add(p[0]); target.add(p[1]); target.add(p[2]); target.add(1f - u); target.add(v)
     }
 
     private fun createCubeVertexBuffer(): FloatBuffer {
@@ -251,8 +279,9 @@ class OpenGlRendererEngine(
         private const val STRIDE_BYTES = COORDS_PER_VERTEX * 4
         private const val SPHERE_STRIDE_FLOATS = 5
         private const val SPHERE_STRIDE_BYTES = SPHERE_STRIDE_FLOATS * 4
+        private const val INITIAL_GLOBE_YAW_DEGREES = -90f
 
         private const val VERTEX_SHADER = "attribute vec3 aPosition; attribute vec2 aTexCoord; uniform mat4 uMvp; varying vec3 vWorld; varying vec2 vTexCoord; void main(){ vWorld = normalize(aPosition); vTexCoord = aTexCoord; gl_Position = uMvp * vec4(aPosition,1.0); }"
-        private const val FRAGMENT_SHADER = "precision mediump float; uniform float uPlanetDetail; uniform vec3 uSunDirection; uniform sampler2D uEarthTex; varying vec3 vWorld; varying vec2 vTexCoord; void main(){ if (uPlanetDetail < 0.5) { gl_FragColor = vec4(0.9,0.9,0.9,1.0); return; } vec3 albedo = texture2D(uEarthTex, vTexCoord).rgb; vec3 n = normalize(vWorld); float ndotl = dot(n, normalize(uSunDirection)); float dayFactor = smoothstep(-0.08, 0.18, ndotl); float diffuse = clamp(ndotl, 0.0, 1.0); float ambient = 0.07; vec3 lit = albedo * (ambient + diffuse * 0.93); vec3 night = albedo * 0.08; vec3 color = mix(night, lit, dayFactor); gl_FragColor = vec4(color, 1.0); }"
+        private const val FRAGMENT_SHADER = "precision mediump float; uniform float uPlanetDetail; uniform vec3 uSunDirection; uniform sampler2D uEarthDayTex; uniform sampler2D uEarthNightTex; varying vec3 vWorld; varying vec2 vTexCoord; void main(){ if (uPlanetDetail < 0.5) { gl_FragColor = vec4(0.9,0.9,0.9,1.0); return; } vec3 dayAlbedo = texture2D(uEarthDayTex, vTexCoord).rgb; vec3 nightAlbedo = texture2D(uEarthNightTex, vTexCoord).rgb; vec3 n = normalize(vWorld); float ndotl = dot(n, normalize(uSunDirection)); float dayFactor = smoothstep(-0.1, 0.22, ndotl); float diffuse = clamp(ndotl, 0.0, 1.0); float ambient = 0.06; vec3 litDay = dayAlbedo * (ambient + diffuse * 0.94); float nightGlow = smoothstep(0.2, -0.25, ndotl); vec3 litNight = nightAlbedo * (0.22 + nightGlow * 0.85); vec3 color = mix(litNight, litDay, dayFactor); gl_FragColor = vec4(color, 1.0); }"
     }
 }

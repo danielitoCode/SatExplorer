@@ -16,6 +16,9 @@ class GlSurfaceRenderer(
 
     fun setZoom(scaleFactor: Float) = engine.setCameraZoom(scaleFactor)
 
+    fun setOrbit(yaw: Float, pitch: Float) = engine.setCameraOrbit(yaw, pitch)
+
+    fun setDistance(distance: Float) = engine.setCameraDistance(distance)
     fun orbit(deltaX: Float, deltaY: Float) = engine.orbitCamera(deltaX, deltaY)
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {

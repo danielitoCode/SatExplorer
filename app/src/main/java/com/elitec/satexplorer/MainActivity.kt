@@ -27,7 +27,8 @@ class MainActivity : ComponentActivity() {
                             .padding(innerPadding)
                     )
                     /*MainNavigationWrapper(
-                        modifier = Modifier.fillMaxSize().padding(innerPadding)
+                        contentPaddingValues = innerPadding,
+                        modifier = Modifier.fillMaxSize()
                     )*/
                 }
             }

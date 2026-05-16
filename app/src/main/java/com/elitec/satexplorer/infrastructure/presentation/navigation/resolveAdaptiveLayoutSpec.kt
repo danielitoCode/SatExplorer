@@ -23,17 +23,34 @@ fun resolveAdaptiveLayoutSpec(
             posture = posture,
             showListAndDetail = false,
             showTopBarInDetail = true,
-            maxContentWidthDp = 600,
+            maxContentWidthDp = 480,
         )
 
-        DevicePosture.CompactLandscape,
-        DevicePosture.MediumPortrait,
-        DevicePosture.MediumLandscape,
+        DevicePosture.CompactLandscape -> AdaptiveLayoutSpec(
+            posture = posture,
+            showListAndDetail = true,
+            showTopBarInDetail = true,
+            maxContentWidthDp = 700,
+        )
+
+        DevicePosture.MediumPortrait -> AdaptiveLayoutSpec(
+            posture = posture,
+            showListAndDetail = true,
+            showTopBarInDetail = false,
+            maxContentWidthDp = 840,
+        )
+
+        DevicePosture.MediumLandscape -> AdaptiveLayoutSpec(
+            posture = posture,
+            showListAndDetail = true,
+            showTopBarInDetail = false,
+            maxContentWidthDp = 960,
+        )
         DevicePosture.Expanded -> AdaptiveLayoutSpec(
             posture = posture,
             showListAndDetail = true,
             showTopBarInDetail = false,
-            maxContentWidthDp = 920,
+            maxContentWidthDp = 1200,
         )
     }
 }
