@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -99,11 +100,13 @@ fun LoginScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "@"
+                            Icon(
+                                modifier = Modifier.padding(vertical = 3.dp),
+                                imageVector = Icons.Default.AlternateEmail,
+                                contentDescription = "email icon"
                             )
                             Text(
-                                text = "EMAIL"
+                                text = "EMAIL or USERNAME"
                             )
                         }
                     },
@@ -296,24 +299,5 @@ fun LoginScreenLightPreview() {
             )
         }
 
-    }
-}
-
-@Preview(
-    showBackground = true
-)
-@Composable
-fun LoginScreenNightPreview() {
-    SatExplorerTheme(
-        darkTheme = true,
-        dynamicColor = true
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            LoginScreen(
-                modifier = Modifier.fillMaxSize()
-            )
-        }
     }
 }

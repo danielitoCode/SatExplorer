@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elitec.satexplorer.feature.visualization.domain.caseuse.BuildSceneGraphUseCase
 import com.elitec.satexplorer.feature.visualization.domain.entity.RenderObject
+import com.elitec.satexplorer.feature.visualization.model.VisualizationControlsState
 import com.elitec.satexplorer.feature.visualization.presentation.util.RenderStateHolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

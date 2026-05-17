@@ -1,5 +1,8 @@
 package com.elitec.satexplorer.feature.tracking.domain.entity
 
+import kotlin.random.Random
+import kotlin.random.nextInt
+
 enum class SatelliteType {
     LEO,        // Low Earth Orbit
     MEO,        // Medium Earth Orbit
@@ -8,5 +11,22 @@ enum class SatelliteType {
     DEBRIS,     // basura espacial
     PAYLOAD,    // carga útil
     ISS,
-    CONSTELLATION
+    CONSTELLATION;
+
+    companion object {
+        fun toList(): List<SatelliteType> =
+            listOf(
+                LEO,
+                MEO,
+                GEO,
+                DEBRIS,
+                PAYLOAD,
+                ISS,
+                CONSTELLATION
+            )
+
+        fun getRandomType(): SatelliteType =
+            this.toList()[Random.nextInt(0..<this.toList().size)]
+
+    }
 }
