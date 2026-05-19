@@ -4,29 +4,25 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed class MainRoutes: NavKey {
+sealed interface MainRoutes: NavKey {
     @Serializable
-    object Splash: MainRoutes()
+    object Splash: MainRoutes
 
     @Serializable
-    object Landing: MainRoutes()
+    object Landing: MainRoutes
+    @Serializable
+    object Login: MainRoutes
 
     @Serializable
-    object Login: MainRoutes()
+    data class Home( val userId: String ): MainRoutes
 
     @Serializable
-    data class Home(
-        val userId: String,
-        val pendingReservationId: String? = null
-    ): MainRoutes()
+    object Register: MainRoutes
 
     @Serializable
-    object Register: MainRoutes()
-
-    @Serializable
-    object Error: MainRoutes()
+    object Error: MainRoutes
 
     // From Test only
     @Serializable
-    data class Details(val id: String): MainRoutes()
+    data class Details(val id: String): MainRoutes
 }

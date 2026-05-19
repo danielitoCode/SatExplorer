@@ -23,8 +23,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             SatExplorerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val paddings = innerPadding
-                    GlobeScreen(
+                    MainNavigationWrapper(
+                        contentPaddingValues = innerPadding,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

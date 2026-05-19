@@ -1,6 +1,7 @@
 package com.elitec.satexplorer.feature.auth.presentation.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,10 +38,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.elitec.satexplorer.R
+import com.elitec.satexplorer.infrastructure.presentation.navigation.MainRoutes
 import com.elitec.satexplorer.infrastructure.presentation.theme.SatExplorerTheme
 
 @Composable
 fun LoginScreen(
+    navigateTo: (MainRoutes) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var email by rememberSaveable { mutableStateOf("") }
@@ -135,7 +138,7 @@ fun LoginScreen(
                 )
                 Button(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = {}
+                    onClick = { navigateTo(MainRoutes.Home("UserTest")) }
                 ) {
                     Text(
                         text = "LOGIN"
@@ -155,7 +158,7 @@ fun LoginScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 5.dp),
-                            onClick = {}
+                            onClick = { navigateTo(MainRoutes.Home("UserTest")) }
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.Center,
@@ -175,7 +178,7 @@ fun LoginScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 5.dp),
-                            onClick = {}
+                            onClick = { navigateTo(MainRoutes.Home("UserTest")) }
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.Center,
@@ -199,7 +202,10 @@ fun LoginScreen(
                 text = "Don´t have an account?"
             )
             Text(
-                color = Color.Blue.copy(alpha = 0.7f),
+                modifier = Modifier.clickable {
+                    navigateTo(MainRoutes.Register)
+                },
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
                 text = "Sign Up"
             )
@@ -295,6 +301,7 @@ fun LoginScreenLightPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             LoginScreen(
+                navigateTo = {},
                 modifier = Modifier.fillMaxSize()
             )
         }

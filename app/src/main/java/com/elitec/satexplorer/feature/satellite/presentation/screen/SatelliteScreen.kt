@@ -72,17 +72,16 @@ fun SatelliteScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier
             .fillMaxSize()
-            .padding(20.dp)
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
+            /*Icon(
                 painter = painterResource(R.drawable.parabolical),
                 contentDescription = "parabolical icon",
                 modifier = Modifier.size(30.dp)
-            )
+            )*/
             Text(
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,

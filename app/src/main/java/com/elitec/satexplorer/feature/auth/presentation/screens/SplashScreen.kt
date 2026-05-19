@@ -37,7 +37,7 @@ fun SplashScreen(
 ) {
     LaunchedEffect(null) {
         delay(2000)
-        navigateTo(MainRoutes.Login)
+        navigateTo(MainRoutes.Landing)
     }
     Box(
         modifier = modifier

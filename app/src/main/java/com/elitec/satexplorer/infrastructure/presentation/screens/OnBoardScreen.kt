@@ -1,12 +1,15 @@
-package com.elitec.satexplorer.infrastructure.presentation
+package com.elitec.satexplorer.infrastructure.presentation.screens
 
 import android.widget.Space
 import androidx.collection.mutableIntSetOf
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -59,13 +62,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.elitec.satexplorer.R
 import com.elitec.satexplorer.infrastructure.presentation.components.LiveAnimatedBox
+import com.elitec.satexplorer.infrastructure.presentation.navigation.MainRoutes
 import com.elitec.satexplorer.infrastructure.presentation.theme.SatExplorerTheme
 import com.elitec.satexplorer.infrastructure.presentation.theme.signalGreen
 import kotlinx.coroutines.delay
+import org.koin.core.qualifier.named
 import kotlin.concurrent.timer
 
 @Composable
 fun OnBoardScreen(
+    navigateTo: (MainRoutes) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedIndex by rememberSaveable { mutableIntStateOf(1) }
@@ -108,6 +114,8 @@ fun OnBoardScreen(
                 index = selectedIndex
             )
             AnimatedVisibility(
+                enter = fadeIn(),
+                exit = fadeOut(),
                 visible = selectedIndex != 3
             ) {
                 Row(
@@ -115,7 +123,9 @@ fun OnBoardScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     TextButton(
-                        onClick = {}
+                        onClick = {
+                            navigateTo(MainRoutes.Login)
+                        }
                     ) {
                         Text(
                             text = "Skip"
@@ -131,11 +141,13 @@ fun OnBoardScreen(
                 }
             }
             AnimatedVisibility(
+                enter = fadeIn(),
+                exit = fadeOut(),
                 visible = selectedIndex == 3
             ) {
                 Button(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = {}
+                    onClick = { navigateTo(MainRoutes.Login) }
                 ) {
                     Text(
                         text = "GET STARTED"
@@ -491,68 +503,80 @@ private fun OrbitalOnBoardSection(
 private fun ReceptionOnBoardingSection(
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant ,
-        shape = RoundedCornerShape(20.dp),
-        shadowElevation = 5.dp,
-        tonalElevation = 5.dp
+    Column(
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(10.dp)
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp)
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+            Surface(
+                shape = RoundedCornerShape(20.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Icon(
-                        modifier = Modifier.size(50.dp).padding(10.dp),
-                        imageVector = Icons.Default.RadioButtonUnchecked,
-                        contentDescription = "orbital icon"
-                    )
-                }
-                Spacer(
-                    modifier = Modifier.width(20.dp)
+                Icon(
+                    modifier = Modifier.size(50.dp).padding(10.dp),
+                    imageVector = Icons.Default.RadioButtonUnchecked,
+                    contentDescription = "orbital icon"
                 )
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    Text(
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.titleSmall,
-                        text = "MODULE 03 // DYNAMICS"
-                    )
-                    Text(
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.headlineMedium,
-                        text = "Real Orbital"
-                    )
-                    Text(
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.headlineMedium,
-                        text = "Mechanics"
-                    )
-                }
             }
-            Text(
-                textAlign = TextAlign.Justify,
-                text = "Powered by aerospace-grade SGP4 algorithms. Access professional TLE data, precise altitude, and velocity telemetry for thousands of objects in real-time sync with orbital propagation models"
+            Spacer(
+                modifier = Modifier.width(20.dp)
             )
-            Icon(
-                painter = painterResource(R.drawable.parabolical),
+            Column(
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleSmall,
+                    text = "MODULE 03 // DYNAMICS"
+                )
+                Text(
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineMedium,
+                    text = "Real Orbital"
+                )
+                Text(
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineMedium,
+                    text = "Mechanics"
+                )
+            }
+        }
+        Text(
+            textAlign = TextAlign.Justify,
+            style = MaterialTheme.typography.bodySmall,
+            text = "Powered by aerospace-grade SGP4 algorithms. Access professional TLE data, precise altitude, and velocity telemetry for thousands of objects in real-time sync with orbital propagation models"
+        )
+        Box(
+            modifier = Modifier.heightIn(max = 350.dp).fillMaxWidth()
+        ) {
+            Image(
+                painter = painterResource(R.drawable.banner),
                 contentDescription = "satellite receptor",
-                modifier = Modifier.size(100.dp).align(Alignment.CenterHorizontally)
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier.fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.background
+                            )
+                        )
+                    )
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp)
+                modifier = Modifier.fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(10.dp)
             ) {
                 Surface(
                     modifier = Modifier.weight(1f).fillMaxWidth()
@@ -628,6 +652,9 @@ private fun ReceptionOnBoardingSection(
                 }
             }
         }
+
+
+
     }
 }
 
@@ -662,6 +689,7 @@ fun OnBoardScreenPreview () {
             color = MaterialTheme.colorScheme.background
         ) {
             OnBoardScreen(
+                navigateTo = {},
                 modifier = Modifier.fillMaxSize()
             )
         }

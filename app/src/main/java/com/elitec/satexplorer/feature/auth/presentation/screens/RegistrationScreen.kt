@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.elitec.satexplorer.R
+import com.elitec.satexplorer.infrastructure.presentation.navigation.MainRoutes
 import com.elitec.satexplorer.infrastructure.presentation.theme.SatExplorerTheme
 import com.elitec.satexplorer.infrastructure.presentation.theme.signalAmber
 import com.elitec.satexplorer.infrastructure.presentation.theme.signalGreen
@@ -56,6 +58,7 @@ import com.elitec.satexplorer.infrastructure.presentation.theme.textSecondary
 
 @Composable
 fun RegistrationScreen(
+    navigateTo: (MainRoutes) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var userName by rememberSaveable { mutableStateOf("") }
@@ -390,7 +393,7 @@ fun RegistrationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp),
-                onClick = {}
+                onClick = { navigateTo(MainRoutes.Home("userRegistered")) }
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -418,6 +421,9 @@ fun RegistrationScreen(
                 )
                 Spacer(modifier = Modifier.width(5.dp))
                 Text(
+                    modifier = Modifier.clickable {
+                        navigateTo(MainRoutes.Login)
+                    },
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     text = "Access terminal"
@@ -466,6 +472,7 @@ fun RegistrationScreenPreview() {
             modifier = Modifier.fillMaxSize()
         ) {
             RegistrationScreen(
+                navigateTo = {},
                 modifier = Modifier.fillMaxSize()
             )
         }

@@ -12,13 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.elitec.satexplorer.feature.auth.presentation.screens.LoginScreen
+import com.elitec.satexplorer.feature.auth.presentation.screens.RegistrationScreen
 import com.elitec.satexplorer.feature.auth.presentation.screens.SplashScreen
 import com.elitec.satexplorer.infrastructure.presentation.navigation.utils.navigateBack
 import com.elitec.satexplorer.infrastructure.presentation.navigation.utils.navigateTo
+import com.elitec.satexplorer.infrastructure.presentation.screens.OnBoardScreen
 import java.util.Map.entry
 
 @Composable
@@ -82,9 +85,32 @@ fun MainNavigationWrapper(
                         )
                     )
                 }
+                entry<MainRoutes.Landing> {
+                    OnBoardScreen(
+                        navigateTo = { route -> backStack.navigateTo(route) },
+                        modifier = Modifier.fillMaxSize().padding(top = contentPaddingValues.calculateTopPadding())
+                    )
+                }
+                entry<MainRoutes.Register> {
+                    RegistrationScreen(
+                        navigateTo = { route -> backStack.navigateTo(route) },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
                 entry<MainRoutes.Login> {
                     LoginScreen(
+                        navigateTo = { route -> backStack.navigateTo(route) },
                         modifier = Modifier.fillMaxSize()
+                    )
+                }
+                entry<MainRoutes.Home> { key ->
+                    InternalNavigationWrapper(
+                        modifier = Modifier.fillMaxSize().padding(
+                            top = contentPaddingValues.calculateTopPadding(),
+                            end = 10.dp,
+                            start = 10.dp,
+                            bottom = contentPaddingValues.calculateBottomPadding() + 5.dp
+                        )
                     )
                 }
             }
