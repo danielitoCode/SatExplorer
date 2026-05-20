@@ -151,8 +151,19 @@ fun InternalNavigationWrapper(
                 }
             }
         )
+        val currentRoute = backStack.lastOrNull()
+        val selectedItemName = when (currentRoute) {
+            InternalRoutes.MainHome -> "Home"
+            InternalRoutes.Orbit -> "Orbit"
+            InternalRoutes.Search -> "Search"
+            InternalRoutes.ARView -> "Sky"
+            InternalRoutes.Profile -> "Profile"
+            else -> "Home"
+        }
+
         BottomNavBar(
             navItems = navItems,
+            selectedItemName = selectedItemName,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
         )
     }

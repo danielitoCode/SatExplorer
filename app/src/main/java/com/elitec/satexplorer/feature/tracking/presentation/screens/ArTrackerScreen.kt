@@ -152,6 +152,7 @@ fun ArTrackerContent(
     val devicePitch by viewModel.devicePitch.collectAsState()
     val satellite by viewModel.targetSatellite.collectAsState()
     val orbitPath by viewModel.orbitPath.collectAsState()
+    val cameraRotationMatrix by viewModel.cameraRotationMatrix.collectAsState()
 
     DisposableEffect(Unit) {
         viewModel.registerSensors()
@@ -193,7 +194,6 @@ fun ArTrackerContent(
             val centerY = height / 2
 
             // El horizonte físico corresponde a la elevación de la cámara (devicePitch)
-            // Ya no le sumamos 90f porque el remapeo de la cámara ya alinea el eje con el horizonte.
             val cameraElevation = devicePitch
 
             // FILTRO DE HORIZONTE:
@@ -204,96 +204,111 @@ fun ArTrackerContent(
                 // Campo de visión (FOV) dinámico de la cámara según la orientación de la pantalla (Portrait vs Landscape)
                 val isLandscape = width > height
                 val fov = if (isLandscape) 75f else 55f
-                val pixelsPerDegree = width / fov
 
-                // Diferencia angular normalizada para evitar saltos en la frontera 360/0
-                val diffAzimuth = normalizeAngleDiff(satellite.azimuth - deviceAzimuth)
-                val diffPitch = (satellite.elevation - cameraElevation)
+                // Calcular longitud focal para proyección de perspectiva
+                val fovRadians = Math.toRadians(fov.toDouble())
+                val focalLength = (width / 2) / Math.tan(fovRadians / 2).toFloat()
 
-                // 1. Dibujar la órbita completa uniendo los puntos estabilizados
+                // Proyectar el satélite usando perspectiva 3D
+                val satPoint = projectSkyPosition(
+                    azimuth = satellite.azimuth,
+                    elevation = satellite.elevation,
+                    rotationMatrix = cameraRotationMatrix,
+                    centerX = centerX,
+                    centerY = centerY,
+                    focalLength = focalLength
+                )
+
+                // 1. Dibujar la órbita completa uniendo los puntos proyectados
                 if (orbitPath.isNotEmpty()) {
-                    for (i in 0 until orbitPath.size - 1) {
-                        val p1 = orbitPath[i]
-                        val p2 = orbitPath[i + 1]
+                    var lastPoint: Offset? = null
+                    for (p in orbitPath) {
+                        val currentPoint = projectSkyPosition(
+                            azimuth = p.azimuth,
+                            elevation = p.elevation,
+                            rotationMatrix = cameraRotationMatrix,
+                            centerX = centerX,
+                            centerY = centerY,
+                            focalLength = focalLength
+                        )
                         
-                        val diffAz1 = normalizeAngleDiff(p1.azimuth - deviceAzimuth)
-                        val diffEl1 = p1.elevation - cameraElevation
-                        val diffAz2 = normalizeAngleDiff(p2.azimuth - deviceAzimuth)
-                        val diffEl2 = p2.elevation - cameraElevation
-                        
-                        // Evitar dibujar líneas glitch de salto orbital cruzado (envolventes)
-                        if (Math.abs(diffAz1 - diffAz2) < 20f) {
-                            val x1 = centerX + (diffAz1 * pixelsPerDegree)
-                            val y1 = centerY - (diffEl1 * pixelsPerDegree)
-                            val x2 = centerX + (diffAz2 * pixelsPerDegree)
-                            val y2 = centerY - (diffEl2 * pixelsPerDegree)
-                            
-                            drawLine(
-                                color = Color(0xFF00D9FF).copy(alpha = 0.4f),
-                                start = Offset(x1, y1),
-                                end = Offset(x2, y2),
-                                strokeWidth = 6f
-                            )
+                        if (lastPoint != null && currentPoint != null) {
+                            // Evitar dibujar líneas cruzadas glitch que atraviesan la pantalla
+                            val distance = (currentPoint - lastPoint).getDistance()
+                            if (distance < width * 0.4f) {
+                                drawLine(
+                                    color = Color(0xFF00D9FF).copy(alpha = 0.4f),
+                                    start = lastPoint,
+                                    end = currentPoint,
+                                    strokeWidth = 6f
+                                )
+                            }
                         }
+                        lastPoint = currentPoint
                     }
                 }
 
-                // 2. Dibujar el satélite principal y su HUD si está dentro del campo de visión (FOV) de la pantalla
-                if (Math.abs(diffAzimuth) < (fov / 2) && Math.abs(diffPitch) < (fov / 2)) {
-                    val satX = centerX + (diffAzimuth * pixelsPerDegree)
-                    val satY = centerY - (diffPitch * pixelsPerDegree)
+                // 2. Dibujar el satélite principal y su HUD si está dentro del encuadre (y en frente de la cámara)
+                if (satPoint != null && satPoint.x >= 0f && satPoint.x <= width && satPoint.y >= 0f && satPoint.y <= height) {
+                    val satX = satPoint.x
+                    val satY = satPoint.y
 
                     // 3. Dibujar el vector de movimiento direccional (flecha verde en el cielo)
-                    val nextDiffAz = normalizeAngleDiff(satellite.nextAzimuth - deviceAzimuth)
-                    val nextDiffPitch = satellite.nextElevation - cameraElevation
-                    
-                    val nextSatX = centerX + (nextDiffAz * pixelsPerDegree)
-                    val nextSatY = centerY - (nextDiffPitch * pixelsPerDegree)
-                    
-                    val dx = nextSatX - satX
-                    val dy = nextSatY - satY
-                    val length = Math.hypot(dx.toDouble(), dy.toDouble()).toFloat()
-                    
-                    if (length > 0f) {
-                        val dirX = dx / length
-                        val dirY = dy / length
-                        
-                        // Iniciar vector desde el borde exterior del satélite
-                        val startPadding = 24f
-                        val vectorLength = 80f
-                        
-                        val startPoint = Offset(satX + dirX * startPadding, satY + dirY * startPadding)
-                        val endPoint = Offset(satX + dirX * (startPadding + vectorLength), satY + dirY * (startPadding + vectorLength))
-                        
-                        // Dibujar línea del vector de movimiento (Verde brillante)
-                        drawLine(
-                            color = Color(0xFF31E981),
-                            start = startPoint,
-                            end = endPoint,
-                            strokeWidth = 5f
-                        )
-                        
-                        // Dibujar la punta de flecha en el extremo del vector
-                        val arrowSize = 16f
-                        val arrowAngle = Math.atan2(dirY.toDouble(), dirX.toDouble()).toFloat()
-                        
-                        val arrowPath = Path().apply {
-                            moveTo(endPoint.x, endPoint.y)
-                            lineTo(
-                                (endPoint.x - arrowSize * Math.cos(arrowAngle - Math.PI / 6)).toFloat(),
-                                (endPoint.y - arrowSize * Math.sin(arrowAngle - Math.PI / 6)).toFloat()
+                    val nextSatPoint = projectSkyPosition(
+                        azimuth = satellite.nextAzimuth,
+                        elevation = satellite.nextElevation,
+                        rotationMatrix = cameraRotationMatrix,
+                        centerX = centerX,
+                        centerY = centerY,
+                        focalLength = focalLength
+                    )
+
+                    if (nextSatPoint != null) {
+                        val dx = nextSatPoint.x - satPoint.x
+                        val dy = nextSatPoint.y - satPoint.y
+                        val length = Math.hypot(dx.toDouble(), dy.toDouble()).toFloat()
+
+                        if (length > 0f) {
+                            val dirX = dx / length
+                            val dirY = dy / length
+
+                            // Iniciar vector desde el borde exterior del satélite (24dp de radio)
+                            val startPadding = 24f
+                            val vectorLength = 80f
+
+                            val startPoint = Offset(satX + dirX * startPadding, satY + dirY * startPadding)
+                            val endPoint = Offset(satX + dirX * (startPadding + vectorLength), satY + dirY * (startPadding + vectorLength))
+
+                            // Dibujar línea del vector de movimiento (Verde brillante)
+                            drawLine(
+                                color = Color(0xFF31E981),
+                                start = startPoint,
+                                end = endPoint,
+                                strokeWidth = 5f
                             )
-                            lineTo(
-                                (endPoint.x - arrowSize * Math.cos(arrowAngle + Math.PI / 6)).toFloat(),
-                                (endPoint.y - arrowSize * Math.sin(arrowAngle + Math.PI / 6)).toFloat()
+
+                            // Dibujar la punta de flecha en el extremo del vector
+                            val arrowSize = 16f
+                            val arrowAngle = Math.atan2(dirY.toDouble(), dirX.toDouble()).toFloat()
+
+                            val arrowPath = Path().apply {
+                                moveTo(endPoint.x, endPoint.y)
+                                lineTo(
+                                    (endPoint.x - arrowSize * Math.cos(arrowAngle - Math.PI / 6)).toFloat(),
+                                    (endPoint.y - arrowSize * Math.sin(arrowAngle - Math.PI / 6)).toFloat()
+                                )
+                                lineTo(
+                                    (endPoint.x - arrowSize * Math.cos(arrowAngle + Math.PI / 6)).toFloat(),
+                                    (endPoint.y - arrowSize * Math.sin(arrowAngle + Math.PI / 6)).toFloat()
+                                )
+                                close()
+                            }
+
+                            drawPath(
+                                path = arrowPath,
+                                color = Color(0xFF31E981)
                             )
-                            close()
                         }
-                        
-                        drawPath(
-                            path = arrowPath,
-                            color = Color(0xFF31E981)
-                        )
                     }
 
                     // 4. Círculo de rastreo exterior del HUD (Electric Cyan traslúcido)
@@ -378,4 +393,37 @@ private fun normalizeAngleDiff(diff: Float): Float {
     while (d < -180f) d += 360f
     while (d > 180f) d -= 360f
     return d
+}
+
+private fun projectSkyPosition(
+    azimuth: Float,
+    elevation: Float,
+    rotationMatrix: FloatArray,
+    centerX: Float,
+    centerY: Float,
+    focalLength: Float
+): Offset? {
+    val azRad = Math.toRadians(azimuth.toDouble())
+    val elRad = Math.toRadians(elevation.toDouble())
+    val cosEl = Math.cos(elRad)
+    val xW = (cosEl * Math.sin(azRad)).toFloat()
+    val yW = (cosEl * Math.cos(azRad)).toFloat()
+    val zW = Math.sin(elRad).toFloat()
+
+    // V_camera = R^T * V_world
+    // rotationMatrix es de 3x3 en orden de filas:
+    // [r0 r1 r2]
+    // [r3 r4 r5]
+    // [r6 r7 r8]
+    // La transpuesta R^T multiplica así:
+    val xC = rotationMatrix[0] * xW + rotationMatrix[3] * yW + rotationMatrix[6] * zW
+    val yC = rotationMatrix[1] * xW + rotationMatrix[4] * yW + rotationMatrix[7] * zW
+    val zC = rotationMatrix[2] * xW + rotationMatrix[5] * yW + rotationMatrix[8] * zW
+
+    // Si zC >= 0, el punto está detrás del plano de la cámara
+    if (zC >= 0f) return null
+
+    val screenX = centerX + (xC / -zC) * focalLength
+    val screenY = centerY - (yC / -zC) * focalLength
+    return Offset(screenX, screenY)
 }

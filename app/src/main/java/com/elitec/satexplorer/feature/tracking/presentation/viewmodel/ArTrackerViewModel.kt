@@ -34,11 +34,13 @@ class ArTrackerViewModel(
     )
 
     private val _orbitPath = MutableStateFlow<List<SkyPosition>>(emptyList())
+    private val _cameraRotationMatrix = MutableStateFlow(FloatArray(9).apply { this[0] = 1f; this[4] = 1f; this[8] = 1f })
 
     val deviceAzimuth: StateFlow<Float> = _deviceAzimuth.asStateFlow()
     val devicePitch: StateFlow<Float> = _devicePitch.asStateFlow()
     val targetSatellite: StateFlow<SkyPosition> = _targetSatellite.asStateFlow()
     val orbitPath: StateFlow<List<SkyPosition>> = _orbitPath.asStateFlow()
+    val cameraRotationMatrix: StateFlow<FloatArray> = _cameraRotationMatrix.asStateFlow()
 
     init {
         generateOrbitPath()
@@ -155,7 +157,7 @@ class ArTrackerViewModel(
         }
     }
 
-    private val cameraRotationMatrix = FloatArray(9)
+    private val tempCameraRotationMatrix = FloatArray(9)
 
     private fun processOrientation() {
         // Remapeo del sistema de coordenadas basado en la orientación física de la pantalla (Portrait/Landscape)
@@ -194,20 +196,24 @@ class ArTrackerViewModel(
             remappedRotationMatrix,
             SensorManager.AXIS_X,
             SensorManager.AXIS_Z,
-            cameraRotationMatrix
+            tempCameraRotationMatrix
         )
 
-        SensorManager.getOrientation(cameraRotationMatrix, orientationAngles)
+        SensorManager.getOrientation(tempCameraRotationMatrix, orientationAngles)
 
         // Convertimos radianes a grados y normalizamos el azimut a 0..360
         val rawAzimuth = (Math.toDegrees(orientationAngles[0].toDouble()).toFloat() + 360f) % 360f
-        val rawPitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()
+        // Negamos el pitch para que apuntar al cielo sea positivo (elevación) y al suelo sea negativo
+        val rawPitch = -Math.toDegrees(orientationAngles[1].toDouble()).toFloat()
 
         // Coeficiente de suavizado del filtro de paso bajo (0.12 = muy estable, sin ruido de microvibraciones)
         val alpha = 0.12f
 
         _deviceAzimuth.value = smoothAngle(_deviceAzimuth.value, rawAzimuth, alpha)
         _devicePitch.value = _devicePitch.value + alpha * (rawPitch - _devicePitch.value)
+
+        // Exponer la matriz de rotación de la cámara actualizada
+        _cameraRotationMatrix.value = tempCameraRotationMatrix.clone()
     }
 
     /**

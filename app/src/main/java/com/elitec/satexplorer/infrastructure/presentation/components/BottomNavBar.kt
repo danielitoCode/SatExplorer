@@ -38,9 +38,9 @@ import com.elitec.satexplorer.infrastructure.presentation.theme.SatExplorerTheme
 @Composable
 fun BottomNavBar(
     navItems: List<NavBarItem>,
+    selectedItemName: String,
     modifier: Modifier = Modifier
 ) {
-    var itemSelectedName by rememberSaveable { mutableStateOf(navItems[0].tittle) }
     Surface(
         shadowElevation = 5.dp,
         tonalElevation = 5.dp,
@@ -59,7 +59,7 @@ fun BottomNavBar(
             items(navItems) { navItem ->
 
                 val animatedContentColor by animateColorAsState(
-                    if(itemSelectedName == navItem.tittle) {
+                    if(selectedItemName == navItem.tittle) {
                         MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.onSurface
@@ -67,7 +67,6 @@ fun BottomNavBar(
                 )
                 Box(
                     modifier = Modifier.clickable {
-                        itemSelectedName = navItem.tittle
                         navItem.action()
                     }
                 ) {
@@ -100,11 +99,11 @@ fun BottomNavBarPreview() {
         NavBarItem("Search", Icons.Default.Search, action = {}),
         NavBarItem("Sky", Icons.Default.RemoveRedEye, action = {}),
         NavBarItem("Profile", Icons.Default.AccountCircle, action = {}),
-
     )
     SatExplorerTheme {
         BottomNavBar(
             navItems = navItems,
+            selectedItemName = "Dashboard",
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
         )
     }
