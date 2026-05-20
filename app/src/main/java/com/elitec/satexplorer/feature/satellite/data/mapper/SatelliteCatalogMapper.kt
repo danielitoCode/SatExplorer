@@ -2,13 +2,19 @@ package com.elitec.satexplorer.feature.satellite.data.mapper
 
 import com.elitec.satexplorer.feature.satellite.data.dto.TleCatalogItemDto
 import com.elitec.satexplorer.feature.satellite.data.dto.TleCatalogResponseDto
+import com.elitec.satexplorer.feature.satellite.data.dto.SatNogsSatelliteDto
 import com.elitec.satexplorer.feature.satellite.domain.entity.SatelliteCatalogPage
+import com.elitec.satexplorer.feature.satellite.domain.entity.SatelliteVisualDetails
 import com.elitec.satexplorer.feature.tracking.domain.entity.Satellite
 import com.elitec.satexplorer.feature.tracking.domain.entity.SatelliteType
 import com.elitec.satexplorer.feature.tracking.domain.entity.TleData
 import java.time.OffsetDateTime
 
 class SatelliteCatalogMapper {
+
+    companion object {
+        private const val SATNOGS_MEDIA_BASE_URL = "https://db.satnogs.org/media/"
+    }
 
     fun toDomain(dto: TleCatalogResponseDto): SatelliteCatalogPage {
         return SatelliteCatalogPage(
@@ -17,6 +23,19 @@ class SatelliteCatalogMapper {
             pageSize = dto.parameters.pageSize,
             totalItems = dto.totalItems,
             hasNextPage = dto.view?.next != null
+        )
+    }
+
+    fun toVisualDetails(dto: SatNogsSatelliteDto?): SatelliteVisualDetails? {
+        if (dto == null) {
+            return null
+        }
+
+        return SatelliteVisualDetails(
+            imageUrl = dto.image.takeIf { it.isNotBlank() }?.let { SATNOGS_MEDIA_BASE_URL + it },
+            website = dto.website.takeIf { it.isNotBlank() },
+            status = dto.status.takeIf { it.isNotBlank() },
+            countries = dto.countries.takeIf { it.isNotBlank() }
         )
     }
 
@@ -35,7 +54,7 @@ class SatelliteCatalogMapper {
             id = dto.satelliteId.toLong(),
             noradId = dto.satelliteId,
             name = dto.name,
-            type = resolveType(dto.name, meanMotion),
+            type = resolveType(dto.name, meanMotion, eccentricity),
             tle = TleData(
                 line1 = dto.line1,
                 line2 = dto.line2,
@@ -52,16 +71,18 @@ class SatelliteCatalogMapper {
         )
     }
 
-    private fun resolveType(name: String, meanMotion: Double): SatelliteType {
+    private fun resolveType(name: String, meanMotion: Double, eccentricity: Double): SatelliteType {
         val normalizedName = name.lowercase()
 
         return when {
             normalizedName.contains("iss") -> SatelliteType.ISS
+            normalizedName.contains("molniya") || normalizedName.contains("tundra") -> SatelliteType.HEO
             normalizedName.contains("debris") || normalizedName.contains("object") -> SatelliteType.DEBRIS
             normalizedName.contains("starlink") ||
                 normalizedName.contains("oneweb") ||
                 normalizedName.contains("iridium") ||
                 normalizedName.contains("planet") -> SatelliteType.CONSTELLATION
+            eccentricity >= 0.25 -> SatelliteType.HEO
             meanMotion >= 11.0 -> SatelliteType.LEO
             meanMotion >= 2.0 -> SatelliteType.MEO
             meanMotion > 0.0 -> SatelliteType.GEO

@@ -11,8 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.elitec.satexplorer.feature.tracking.presentation.screens.SatelliteTrackerScreen
-import com.elitec.satexplorer.feature.visualization.presentation.wrapper.GlobeScreen
 import com.elitec.satexplorer.infrastructure.presentation.navigation.MainNavigationWrapper
 import com.elitec.satexplorer.infrastructure.presentation.theme.SatExplorerTheme
 

@@ -1,6 +1,7 @@
 package com.elitec.satexplorer.feature.satellite.domain.repository
 
 import com.elitec.satexplorer.feature.satellite.domain.entity.SatelliteCatalogPage
+import com.elitec.satexplorer.feature.satellite.domain.entity.SatelliteVisualDetails
 
 interface SatelliteCatalogRepository {
     suspend fun searchSatellites(
@@ -8,4 +9,6 @@ interface SatelliteCatalogRepository {
         page: Int,
         pageSize: Int
     ): SatelliteCatalogPage
+
+    suspend fun loadVisualDetails(noradId: Int): SatelliteVisualDetails?
 }

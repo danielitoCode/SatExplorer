@@ -8,8 +8,12 @@ import com.elitec.satexplorer.feature.tracking.domain.caseuse.LoadSatelliteFromA
 import com.elitec.satexplorer.feature.tracking.domain.caseuse.LoadSatelliteManualUseCase
 import com.elitec.satexplorer.feature.tracking.domain.repository.SatelliteRepository
 import com.elitec.satexplorer.feature.tracking.presentation.viewmodel.SatelliteInputViewModel
+import android.content.Context
+import android.hardware.SensorManager
+import com.elitec.satexplorer.feature.tracking.presentation.viewmodel.ArTrackerViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -22,4 +26,8 @@ val trackingModule = module {
     factory { LoadSatelliteManualUseCase(get()) }
     factory { ComputeSatellitePositionUseCase() }
     viewModel { SatelliteInputViewModel(get(), get(), get(), get()) }
+    
+    // Inyección de SensorManager del sistema y ArTrackerViewModel
+    single { androidContext().getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+    viewModel { ArTrackerViewModel(get()) }
 }

@@ -26,15 +26,14 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import com.elitec.satexplorer.feature.analitics.presentation.screens.DashBoardScreen
 import com.elitec.satexplorer.feature.auth.domain.entity.AccountState
 import com.elitec.satexplorer.feature.auth.domain.entity.SystemSettingsConfiguration
 import com.elitec.satexplorer.feature.auth.domain.entity.User
 import com.elitec.satexplorer.feature.auth.domain.entity.UserRank
 import com.elitec.satexplorer.feature.auth.presentation.screens.ProfileScreen
 import com.elitec.satexplorer.feature.satellite.presentation.screen.SatelliteScreen
-import com.elitec.satexplorer.feature.tracking.domain.entity.Satellite
 import com.elitec.satexplorer.feature.tracking.domain.entity.SatelliteType
-import com.elitec.satexplorer.feature.tracking.domain.entity.TleData
 import com.elitec.satexplorer.feature.visualization.domain.entity.Globe
 import com.elitec.satexplorer.feature.visualization.presentation.wrapper.GlobeScreen
 import com.elitec.satexplorer.infrastructure.domain.DistanceUnitsMetrics
@@ -42,6 +41,7 @@ import com.elitec.satexplorer.infrastructure.domain.VelocityUnitsMetrics
 import com.elitec.satexplorer.infrastructure.presentation.components.BottomNavBar
 import com.elitec.satexplorer.infrastructure.presentation.model.NavBarItem
 import com.elitec.satexplorer.infrastructure.presentation.navigation.utils.navigateTo
+import com.elitec.satexplorer.feature.tracking.presentation.screens.ArTrackerScreen
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -67,33 +67,6 @@ fun InternalNavigationWrapper(
         UserRank.OPERATOR,
         AccountState.ACTIVE,
         profileConfig)
-    var satelliteList = mutableListOf<Satellite>()
-    val count = 1..9
-    count.forEach { item ->
-        satelliteList.add(
-            Satellite(
-                item.toLong(),
-                item,
-                "Satellite $item",
-                SatelliteType.getRandomType(),
-                TleData(
-                    "line1 $item",
-                    "line2 $item",
-                    Clock.System.now().toEpochMilliseconds(),
-                    Random.nextInt().toDouble(),
-                    Random.nextInt().toDouble(),
-                    Random.nextInt().toDouble(),
-                    Random.nextInt().toDouble(),
-                    Random.nextInt().toDouble(),
-                    Random.nextInt().toDouble()
-                ),
-                launchDate = Clock.System.now().toEpochMilliseconds(),
-                isActive = true
-            )
-        )
-    }
-
-
     val backStack = rememberNavBackStack(InternalRoutes.MainHome)
     val navItems = listOf(
         NavBarItem("Home", Icons.Default.Dashboard, action = {
@@ -155,18 +128,12 @@ fun InternalNavigationWrapper(
                     )
                 }
                 entry<InternalRoutes.ARView> {
-                    Box(
-                        contentAlignment = Alignment.Center,
+                    ArTrackerScreen(
                         modifier = Modifier.fillMaxSize()
-                    ) {
-                        Text(
-                            text = "AR VIEW"
-                        )
-                    }
+                    )
                 }
                 entry<InternalRoutes.Search> {
                     SatelliteScreen(
-                        satelliteList = satelliteList,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

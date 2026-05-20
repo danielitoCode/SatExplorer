@@ -2,19 +2,16 @@ package com.elitec.satexplorer.feature.satellite.presentation.screen
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -23,290 +20,194 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CardElevation
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Vertices
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.elitec.satexplorer.R
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.elitec.satexplorer.feature.satellite.presentation.viewmodel.SatelliteSearchViewModel
 import com.elitec.satexplorer.feature.tracking.domain.entity.Satellite
 import com.elitec.satexplorer.feature.tracking.domain.entity.SatelliteType
-import com.elitec.satexplorer.feature.tracking.domain.entity.TleData
-import com.elitec.satexplorer.infrastructure.presentation.theme.SatExplorerTheme
 import com.elitec.satexplorer.infrastructure.presentation.theme.signalGreen
-import com.elitec.satexplorer.infrastructure.presentation.theme.telemetryRed
-import kotlin.math.absoluteValue
-import kotlin.random.Random
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
+import org.koin.androidx.compose.koinViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun SatelliteScreen(
-    satelliteList: List<Satellite>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: SatelliteSearchViewModel = koinViewModel(),
+    onSatelliteSelected: (Satellite) -> Unit = {}
 ) {
-    var searchCriterial by rememberSaveable { mutableStateOf("") }
-    var satelliteTypeSelected by rememberSaveable { mutableStateOf<SatelliteType?>(null) }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = modifier
-            .fillMaxSize()
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.fillMaxSize()
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            /*Icon(
-                painter = painterResource(R.drawable.parabolical),
-                contentDescription = "parabolical icon",
-                modifier = Modifier.size(30.dp)
-            )*/
-            Text(
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                text = "MISSION CONTROL"
-            )
-        }
+        Text(
+            style = MaterialTheme.typography.titleLarge,
+            text = "MISSION CONTROL"
+        )
+
         OutlinedTextField(
+            value = state.query,
+            onValueChange = viewModel::onQueryChange,
+            singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(0.7f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
-            value = searchCriterial,
-            onValueChange = { searchCriterial = it },
             label = {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "Search icon"
+                        contentDescription = null
                     )
-                    Text(
-                        text = "Search satellite"
-                    )
+                    Text("Search satellite")
                 }
             },
             placeholder = {
-                Text(
-                    text = "Search satellite by name or NORAD"
-                )
+                Text("Search by name or NORAD")
             },
-            textStyle = MaterialTheme.typography.bodyLarge,
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         )
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            items(SatelliteType.toList()) { satelliteType ->
-                Button(
-                    border = BorderStroke(
-                        1.dp, MaterialTheme.colorScheme.primary.copy(0.5f)
-                    ),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = animateColorAsState(
-                            if(satelliteType == satelliteTypeSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            }
-                        ).value,
-                        contentColor = animateColorAsState(
-                            if(satelliteType == satelliteTypeSelected) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                        ).value,
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    onClick = { satelliteTypeSelected = satelliteType }
+            Button(
+                onClick = viewModel::submitSearch,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Search")
+            }
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
                     Text(
-                        text = satelliteType.name
+                        style = MaterialTheme.typography.labelMedium,
+                        text = "Catalog results"
+                    )
+                    Text(
+                        style = MaterialTheme.typography.titleMedium,
+                        text = state.totalItems.toString()
                     )
                 }
             }
         }
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            items(satelliteList) { satellite ->
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(15.dp),
-                    elevation = CardDefaults.elevatedCardElevation(
-                        defaultElevation = 3.dp,
-                        pressedElevation = 1.dp,
-                        focusedElevation = 5.dp,
-                        hoveredElevation = 5.dp
+            items(SatelliteType.toList()) { satelliteType ->
+                val isSelected = state.selectedType == satelliteType
+                Button(
+                    onClick = { viewModel.onTypeSelected(satelliteType) },
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = animateColorAsState(
+                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            label = "satellite_type_container"
+                        ).value,
+                        contentColor = animateColorAsState(
+                            if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = "satellite_type_content"
+                        ).value
                     )
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        color = MaterialTheme.colorScheme.onSurface.copy(0.8f),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        text = "NORAD:"
-                                    )
-                                    Text(
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        text = "NORAD"
-                                    )
-                                }
-                                Text(
-                                    style = MaterialTheme.typography.titleLarge,
-                                    text = satellite.name
-                                )
-                            }
+                    Text(satelliteType.name)
+                }
+            }
+        }
 
+        if (state.isLoading) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(state.satellites, key = { it.noradId }) { satellite ->
+                    SatelliteCatalogCard(
+                        satellite = satellite,
+                        onClick = { onSatelliteSelected(satellite) }
+                    )
+                }
+
+                item {
+                    when {
+                        state.errorMessage != null -> {
                             Surface(
-                                color = if(satellite.isActive) signalGreen.copy(0.1f) else telemetryRed.copy(0.1f),
-                                tonalElevation = 2.dp,
-                                shape = RoundedCornerShape(5.dp)
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    modifier = Modifier.padding(5.dp),
-                                    color = if(satellite.isActive) signalGreen else telemetryRed,
-                                    text = if(satellite.isActive) "Active" else "Inactive"
+                                    text = state.errorMessage.toString(),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.padding(12.dp)
                                 )
                             }
                         }
-                        Box(
-                            contentAlignment = Alignment.BottomStart,
-                            modifier = Modifier
-                                .padding(vertical = 5.dp)
-                                .heightIn(max = 200.dp)
-                                .clip(RoundedCornerShape(15.dp))
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.banner),
-                                contentDescription = "satellite type photo",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
+
+                        state.isAppending -> {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.verticalGradient(
-                                            listOf(
-                                                Color.Transparent,
-                                                MaterialTheme.colorScheme.background
-                                            )
-                                        )
-                                    )
-                            )
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
                             ) {
-                                Text(
-                                    text = "Launch date:"
-                                )
-                                Text(
-                                    text = satellite.launchDate.toString()
-                                )
+                                CircularProgressIndicator()
                             }
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(5.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                            ) {
-                                VerticalDivider(
-                                    modifier = Modifier.height(40.dp),
-                                    thickness = 1.dp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                ) {
 
-                                    Text(
-                                        style = MaterialTheme.typography.labelLarge,
-                                        text = "Altitude"
-                                    )
-                                    Text(
-                                        style = MaterialTheme.typography.titleMedium,
-                                        text = "${satellite.tle.raan} Km"
-                                    )
-                                }
+                        state.hasNextPage -> {
+                            Button(
+                                onClick = viewModel::loadNextPage,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Load more")
                             }
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                            ) {
-                                VerticalDivider(
-                                    modifier = Modifier.height(40.dp),
-                                    thickness = 1.dp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                ) {
+                        }
 
-                                    Text(
-                                        style = MaterialTheme.typography.labelLarge,
-                                        text = "Type"
-                                    )
-                                    Text(
-                                        style = MaterialTheme.typography.titleMedium,
-                                        text = satellite.type.name
-                                    )
-                                }
+                        state.satellites.isEmpty() -> {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "No satellites found for the current search.",
+                                    modifier = Modifier.padding(14.dp)
+                                )
                             }
                         }
                     }
@@ -316,44 +217,121 @@ fun SatelliteScreen(
     }
 }
 
-@OptIn(ExperimentalTime::class)
-@Preview
 @Composable
-fun SatelliteScreenPreview() {
-    SatExplorerTheme {
-        Surface(
-            color = MaterialTheme.colorScheme.background,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            var satelliteList = mutableListOf<Satellite>()
-            val count = 1..9
-            count.forEach { item ->
-                satelliteList.add(
-                    Satellite(
-                        item.toLong(),
-                        item,
-                        "Satellite $item",
-                        SatelliteType.getRandomType(),
-                        TleData(
-                            "line1 $item",
-                            "line2 $item",
-                            Clock.System.now().toEpochMilliseconds(),
-                            Random.nextInt().toDouble(),
-                            Random.nextInt().toDouble(),
-                            Random.nextInt().toDouble(),
-                            Random.nextInt().toDouble(),
-                            Random.nextInt().toDouble(),
-                            Random.nextInt().toDouble()
-                        ),
-                        launchDate = Clock.System.now().toEpochMilliseconds(),
-                        isActive = true
+private fun SatelliteCatalogCard(
+    satellite: Satellite,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            Color.Transparent
+                        )
                     )
                 )
+                .padding(14.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.titleLarge,
+                        text = satellite.name
+                    )
+                    Text(
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = "NORAD ${satellite.noradId}"
+                    )
+                }
+                Surface(
+                    modifier = Modifier.width(140.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = signalGreen.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = satellite.type.name,
+                        color = signalGreen,
+                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)
+                    )
+                }
             }
-            SatelliteScreen(
-                satelliteList = satelliteList,
-                modifier = Modifier.fillMaxSize()
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                SatelliteMetric(
+                    label = "Inclination",
+                    value = "${"%.2f".format(Locale.US, satellite.tle.inclination)} deg",
+                    modifier = Modifier.weight(1f)
+                )
+                SatelliteMetric(
+                    label = "Mean motion",
+                    value = "${"%.4f".format(Locale.US, satellite.tle.meanMotion)} rev/day",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Text(
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "TLE epoch: ${formatEpoch(satellite.tle.epoch)}"
             )
         }
     }
+}
+
+@Composable
+private fun SatelliteMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        modifier = modifier
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(10.dp)
+        ) {
+            Text(
+                style = MaterialTheme.typography.labelMedium,
+                text = label
+            )
+            Text(
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                text = value
+            )
+        }
+    }
+}
+
+private fun formatEpoch(epochMillis: Long): String {
+    if (epochMillis <= 0L) {
+        return "Unknown"
+    }
+
+    val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
+    return formatter.format(Date(epochMillis))
 }
