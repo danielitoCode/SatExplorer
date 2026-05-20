@@ -1,6 +1,10 @@
 package com.elitec.satexplorer.feature.tracking.presentation.screens
 
 import android.Manifest
+import android.content.Context
+import android.os.Build
+import android.view.Surface
+import android.view.WindowManager
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
@@ -14,7 +18,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -35,8 +41,29 @@ fun ArTrackerScreen(
     viewModel: ArTrackerViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
     
-    // Configuración de permisos usando Accompanist Permissions
+    // Obtener y escuchar la rotación física de la pantalla (Portrait/Landscape) de forma retrocompatible
+    val display = remember(context, configuration) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                context.display
+            } catch (e: Exception) {
+                (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+            }
+        } else {
+            (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+        }
+    }
+    
+    val rotation = display?.rotation ?: Surface.ROTATION_0
+    
+    // Pasar la rotación de la pantalla al ViewModel al cambiar
+    LaunchedEffect(rotation) {
+        viewModel.updateScreenRotation(rotation)
+    }
+    
+    // Configuración de permisos usando Accompanist
     val permissionState = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.CAMERA,
@@ -45,10 +72,9 @@ fun ArTrackerScreen(
     )
 
     if (permissionState.allPermissionsGranted) {
-        // Ejecutar la vista de AR Tracker si todos los permisos están concedidos
         ArTrackerContent(viewModel = viewModel, modifier = modifier)
     } else {
-        // Mostrar pantalla de solicitud de permisos con diseño premium futurista
+        // Pantalla de solicitud de permisos
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -62,7 +88,6 @@ fun ArTrackerScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Indicador de estado orbital
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -79,7 +104,7 @@ fun ArTrackerScreen(
 
                 Text(
                     text = "SEGUIMIENTO EN EL CIELO",
-                    color = Color(0xFFF5F7FA), // Primary Text
+                    color = Color(0xFFF5F7FA),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
@@ -87,7 +112,7 @@ fun ArTrackerScreen(
 
                 Text(
                     text = "Para poder proyectar los satélites sobre tu cielo local en tiempo real, SatExplorer requiere acceso a tu cámara y a tu ubicación GPS exacta.",
-                    color = Color(0xFFA6B1C2), // Secondary Text
+                    color = Color(0xFFA6B1C2),
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp
@@ -96,8 +121,8 @@ fun ArTrackerScreen(
                 Button(
                     onClick = { permissionState.launchMultiplePermissionRequest() },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00D9FF), // Electric Cyan
-                        contentColor = Color(0xFF05070D)  // Deep Space Black
+                        containerColor = Color(0xFF00D9FF),
+                        contentColor = Color(0xFF05070D)
                     ),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
@@ -126,8 +151,8 @@ fun ArTrackerContent(
     val deviceAzimuth by viewModel.deviceAzimuth.collectAsState()
     val devicePitch by viewModel.devicePitch.collectAsState()
     val satellite by viewModel.targetSatellite.collectAsState()
+    val orbitPath by viewModel.orbitPath.collectAsState()
 
-    // Registrar y desregistrar sensores en el ciclo de vida de Compose
     DisposableEffect(Unit) {
         viewModel.registerSensors()
         onDispose { viewModel.unregisterSensors() }
@@ -160,51 +185,136 @@ fun ArTrackerContent(
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. REALIDAD AUMENTADA OVERLAY (Dibujado en tiempo real)
+        // 2. REALIDAD AUMENTADA OVERLAY (Dibujado con sensor de fusión)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val width = size.width
             val height = size.height
             val centerX = width / 2
             val centerY = height / 2
 
-            // Campo de visión de la cámara móvil (aprox 60 grados)
-            val fov = 60f
-            val pixelsPerDegree = width / fov
+            // El horizonte físico corresponde a la elevación de la cámara (devicePitch)
+            // Ya no le sumamos 90f porque el remapeo de la cámara ya alinea el eje con el horizonte.
+            val cameraElevation = devicePitch
 
-            // Diferencia angular
-            val diffAzimuth = (satellite.azimuth - deviceAzimuth)
-            val diffPitch = (satellite.elevation - (devicePitch + 90f))
+            // FILTRO DE HORIZONTE:
+            // Si la inclinación del móvil cae por debajo de 0 grados (apuntando al suelo)
+            // o el satélite está teóricamente bajo el horizonte local (Elevación satélite < 0), no pintamos nada.
+            if (cameraElevation > 0f && satellite.elevation >= 0f) {
+                
+                // Campo de visión (FOV) dinámico de la cámara según la orientación de la pantalla (Portrait vs Landscape)
+                val isLandscape = width > height
+                val fov = if (isLandscape) 75f else 55f
+                val pixelsPerDegree = width / fov
 
-            if (Math.abs(diffAzimuth) < (fov / 2) && Math.abs(diffPitch) < (fov / 2)) {
-                val satX = centerX + (diffAzimuth * pixelsPerDegree)
-                val satY = centerY - (diffPitch * pixelsPerDegree)
+                // Diferencia angular normalizada para evitar saltos en la frontera 360/0
+                val diffAzimuth = normalizeAngleDiff(satellite.azimuth - deviceAzimuth)
+                val diffPitch = (satellite.elevation - cameraElevation)
 
-                // Trayectoria simulada / órbita en el cielo
-                drawLine(
-                    color = Color(0xFF00D9FF).copy(alpha = 0.4f),
-                    start = Offset(satX - 250f, satY + 100f),
-                    end = Offset(satX + 250f, satY - 100f),
-                    strokeWidth = 6f
-                )
+                // 1. Dibujar la órbita completa uniendo los puntos estabilizados
+                if (orbitPath.isNotEmpty()) {
+                    for (i in 0 until orbitPath.size - 1) {
+                        val p1 = orbitPath[i]
+                        val p2 = orbitPath[i + 1]
+                        
+                        val diffAz1 = normalizeAngleDiff(p1.azimuth - deviceAzimuth)
+                        val diffEl1 = p1.elevation - cameraElevation
+                        val diffAz2 = normalizeAngleDiff(p2.azimuth - deviceAzimuth)
+                        val diffEl2 = p2.elevation - cameraElevation
+                        
+                        // Evitar dibujar líneas glitch de salto orbital cruzado (envolventes)
+                        if (Math.abs(diffAz1 - diffAz2) < 20f) {
+                            val x1 = centerX + (diffAz1 * pixelsPerDegree)
+                            val y1 = centerY - (diffEl1 * pixelsPerDegree)
+                            val x2 = centerX + (diffAz2 * pixelsPerDegree)
+                            val y2 = centerY - (diffEl2 * pixelsPerDegree)
+                            
+                            drawLine(
+                                color = Color(0xFF00D9FF).copy(alpha = 0.4f),
+                                start = Offset(x1, y1),
+                                end = Offset(x2, y2),
+                                strokeWidth = 6f
+                            )
+                        }
+                    }
+                }
 
-                // Círculo de rastreo exterior animado
-                drawCircle(
-                    color = Color(0xFF00D9FF).copy(alpha = 0.3f),
-                    radius = 48f,
-                    center = Offset(satX, satY),
-                    style = Stroke(width = 3f)
-                )
+                // 2. Dibujar el satélite principal y su HUD si está dentro del campo de visión (FOV) de la pantalla
+                if (Math.abs(diffAzimuth) < (fov / 2) && Math.abs(diffPitch) < (fov / 2)) {
+                    val satX = centerX + (diffAzimuth * pixelsPerDegree)
+                    val satY = centerY - (diffPitch * pixelsPerDegree)
 
-                // Marcador del satélite principal (Electric Cyan)
-                drawCircle(
-                    color = Color(0xFF00D9FF),
-                    radius = 16f,
-                    center = Offset(satX, satY)
-                )
+                    // 3. Dibujar el vector de movimiento direccional (flecha verde en el cielo)
+                    val nextDiffAz = normalizeAngleDiff(satellite.nextAzimuth - deviceAzimuth)
+                    val nextDiffPitch = satellite.nextElevation - cameraElevation
+                    
+                    val nextSatX = centerX + (nextDiffAz * pixelsPerDegree)
+                    val nextSatY = centerY - (nextDiffPitch * pixelsPerDegree)
+                    
+                    val dx = nextSatX - satX
+                    val dy = nextSatY - satY
+                    val length = Math.hypot(dx.toDouble(), dy.toDouble()).toFloat()
+                    
+                    if (length > 0f) {
+                        val dirX = dx / length
+                        val dirY = dy / length
+                        
+                        // Iniciar vector desde el borde exterior del satélite
+                        val startPadding = 24f
+                        val vectorLength = 80f
+                        
+                        val startPoint = Offset(satX + dirX * startPadding, satY + dirY * startPadding)
+                        val endPoint = Offset(satX + dirX * (startPadding + vectorLength), satY + dirY * (startPadding + vectorLength))
+                        
+                        // Dibujar línea del vector de movimiento (Verde brillante)
+                        drawLine(
+                            color = Color(0xFF31E981),
+                            start = startPoint,
+                            end = endPoint,
+                            strokeWidth = 5f
+                        )
+                        
+                        // Dibujar la punta de flecha en el extremo del vector
+                        val arrowSize = 16f
+                        val arrowAngle = Math.atan2(dirY.toDouble(), dirX.toDouble()).toFloat()
+                        
+                        val arrowPath = Path().apply {
+                            moveTo(endPoint.x, endPoint.y)
+                            lineTo(
+                                (endPoint.x - arrowSize * Math.cos(arrowAngle - Math.PI / 6)).toFloat(),
+                                (endPoint.y - arrowSize * Math.sin(arrowAngle - Math.PI / 6)).toFloat()
+                            )
+                            lineTo(
+                                (endPoint.x - arrowSize * Math.cos(arrowAngle + Math.PI / 6)).toFloat(),
+                                (endPoint.y - arrowSize * Math.sin(arrowAngle + Math.PI / 6)).toFloat()
+                            )
+                            close()
+                        }
+                        
+                        drawPath(
+                            path = arrowPath,
+                            color = Color(0xFF31E981)
+                        )
+                    }
+
+                    // 4. Círculo de rastreo exterior del HUD (Electric Cyan traslúcido)
+                    drawCircle(
+                        color = Color(0xFF00D9FF).copy(alpha = 0.3f),
+                        radius = 48f,
+                        center = Offset(satX, satY),
+                        style = Stroke(width = 3f)
+                    )
+
+                    // 5. Marcador del satélite principal (Electric Cyan sólido)
+                    drawCircle(
+                        color = Color(0xFF00D9FF),
+                        radius = 16f,
+                        center = Offset(satX, satY)
+                    )
+                }
             }
         }
 
-        // HUD de Telemetría e información del próximo paso
+        // HUD de Telemetría inferior
         Card(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -228,13 +338,13 @@ fun ArTrackerContent(
                 ) {
                     Text(
                         text = satellite.name,
-                        color = Color(0xFFF5F7FA), // Primary Text
+                        color = Color(0xFFF5F7FA),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "LIVE",
-                        color = Color(0xFF31E981), // Signal Green
+                        color = Color(0xFF31E981),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
@@ -245,20 +355,27 @@ fun ArTrackerContent(
 
                 Text(
                     text = "Próximo paso visible: ${satellite.nextPassTime}",
-                    color = Color(0xFFFFC857), // Signal Amber
+                    color = Color(0xFFFFC857),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold
                 )
 
-                Divider(color = Color(0xFF131C2E).copy(alpha = 0.5f), thickness = 1.dp)
+                HorizontalDivider(color = Color(0xFF131C2E).copy(alpha = 0.5f), thickness = 1.dp)
 
                 Text(
-                    text = "Instrucciones: Gira a la dirección Sur (180°) y eleva el móvil unos 45° para que aparezca el satélite de prueba en pantalla.",
-                    color = Color(0xFFA6B1C2), // Secondary Text
+                    text = "Instrucciones: Gira al Sur (180°) y eleva el móvil 45°. El satélite y su órbita con vector direccional solo se dibujan al apuntar sobre el horizonte.",
+                    color = Color(0xFFA6B1C2),
                     fontSize = 12.sp,
                     lineHeight = 16.sp
                 )
             }
         }
     }
+}
+
+private fun normalizeAngleDiff(diff: Float): Float {
+    var d = diff
+    while (d < -180f) d += 360f
+    while (d > 180f) d -= 360f
+    return d
 }

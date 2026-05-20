@@ -33,8 +33,8 @@ import com.elitec.satexplorer.feature.auth.domain.entity.User
 import com.elitec.satexplorer.feature.auth.domain.entity.UserRank
 import com.elitec.satexplorer.feature.auth.presentation.screens.ProfileScreen
 import com.elitec.satexplorer.feature.satellite.presentation.screen.SatelliteScreen
-import com.elitec.satexplorer.feature.tracking.domain.entity.SatelliteType
 import com.elitec.satexplorer.feature.visualization.domain.entity.Globe
+import com.elitec.satexplorer.feature.tracking.presentation.viewmodel.SatelliteInputViewModel
 import com.elitec.satexplorer.feature.visualization.presentation.wrapper.GlobeScreen
 import com.elitec.satexplorer.infrastructure.domain.DistanceUnitsMetrics
 import com.elitec.satexplorer.infrastructure.domain.VelocityUnitsMetrics
@@ -42,6 +42,7 @@ import com.elitec.satexplorer.infrastructure.presentation.components.BottomNavBa
 import com.elitec.satexplorer.infrastructure.presentation.model.NavBarItem
 import com.elitec.satexplorer.infrastructure.presentation.navigation.utils.navigateTo
 import com.elitec.satexplorer.feature.tracking.presentation.screens.ArTrackerScreen
+import org.koin.androidx.compose.koinViewModel
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -133,8 +134,13 @@ fun InternalNavigationWrapper(
                     )
                 }
                 entry<InternalRoutes.Search> {
+                    val trackingViewModel: SatelliteInputViewModel = koinViewModel()
                     SatelliteScreen(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        onSatelliteSelected = { satellite ->
+                            trackingViewModel.loadFromApi(satellite.noradId)
+                            backStack.navigateTo(InternalRoutes.Orbit)
+                        }
                     )
                 }
                 entry<InternalRoutes.Profile> {

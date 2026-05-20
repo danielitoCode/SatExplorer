@@ -1,0 +1,143 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "44aed7ea73be88fe51702dd2148d60a7",
+    "entities": [
+      {
+        "tableName": "satellite_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`noradId` INTEGER NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `line1` TEXT NOT NULL, `line2` TEXT NOT NULL, `epoch` INTEGER NOT NULL, `meanMotion` REAL NOT NULL, `eccentricity` REAL NOT NULL, `inclination` REAL NOT NULL, `raan` REAL NOT NULL, `argumentOfPerigee` REAL NOT NULL, `meanAnomaly` REAL NOT NULL, `launchDate` INTEGER, `isActive` INTEGER NOT NULL, `imageUrl` TEXT, `website` TEXT, `status` TEXT, `countries` TEXT, `lastCatalogSync` INTEGER, `lastVisualSync` INTEGER, `lastOrbitSync` INTEGER, PRIMARY KEY(`noradId`))",
+        "fields": [
+          {
+            "fieldPath": "noradId",
+            "columnName": "noradId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "line1",
+            "columnName": "line1",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "line2",
+            "columnName": "line2",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epoch",
+            "columnName": "epoch",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meanMotion",
+            "columnName": "meanMotion",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eccentricity",
+            "columnName": "eccentricity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inclination",
+            "columnName": "inclination",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "raan",
+            "columnName": "raan",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "argumentOfPerigee",
+            "columnName": "argumentOfPerigee",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meanAnomaly",
+            "columnName": "meanAnomaly",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "launchDate",
+            "columnName": "launchDate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "isActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageUrl",
+            "columnName": "imageUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "website",
+            "columnName": "website",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "countries",
+            "columnName": "countries",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastCatalogSync",
+            "columnName": "lastCatalogSync",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastVisualSync",
+            "columnName": "lastVisualSync",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastOrbitSync",
+            "columnName": "lastOrbitSync",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "noradId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '44aed7ea73be88fe51702dd2148d60a7')"
+    ]
+  }
+}

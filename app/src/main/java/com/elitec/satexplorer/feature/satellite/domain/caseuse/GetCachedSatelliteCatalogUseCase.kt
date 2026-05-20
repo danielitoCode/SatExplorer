@@ -4,7 +4,7 @@ import com.elitec.satexplorer.feature.satellite.domain.entity.SatelliteCatalogCa
 import com.elitec.satexplorer.feature.satellite.domain.entity.SatelliteCatalogPage
 import com.elitec.satexplorer.feature.satellite.domain.repository.SatelliteCatalogRepository
 
-class SyncTleUseCase(
+class GetCachedSatelliteCatalogUseCase(
     private val repository: SatelliteCatalogRepository
 ) {
     suspend operator fun invoke(
@@ -13,11 +13,6 @@ class SyncTleUseCase(
         pageSize: Int,
         category: SatelliteCatalogCategory
     ): SatelliteCatalogPage {
-        return repository.searchSatellites(
-            query = query,
-            page = page,
-            pageSize = pageSize,
-            category = category
-        )
+        return repository.getCachedSatellites(query, page, pageSize, category)
     }
 }

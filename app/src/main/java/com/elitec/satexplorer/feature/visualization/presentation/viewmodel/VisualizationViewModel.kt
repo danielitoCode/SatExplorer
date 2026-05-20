@@ -39,6 +39,8 @@ class VisualizationViewModel(
         _renderObjects.value = objects
     }
 
+    fun hasRenderObjects(): Boolean = _renderObjects.value.isNotEmpty()
+
     fun rotateLeft() {
         _controlsState.value = _controlsState.value.copy(yaw = _controlsState.value.yaw - 8f)
     }

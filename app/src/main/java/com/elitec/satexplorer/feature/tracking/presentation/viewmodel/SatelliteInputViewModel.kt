@@ -42,6 +42,10 @@ class SatelliteInputViewModel(
         }
     }
 
+    fun loadFromApi(noradId: Int) {
+        loadFromApi(noradId.toString())
+    }
+
     fun loadManual(name: String, line1: String, line2: String) {
         _uiState.value = runCatching { SatelliteUiState(satellite = loadManualUseCase(name, line1, line2)) }
             .getOrElse { SatelliteUiState(error = it.message) }

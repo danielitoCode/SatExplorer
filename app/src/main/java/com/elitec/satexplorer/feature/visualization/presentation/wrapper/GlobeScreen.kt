@@ -42,7 +42,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -81,6 +80,7 @@ fun GlobeScreen(
 
     val context = LocalContext.current
     val controls by viewModel.controlsState.collectAsStateWithLifecycle()
+    val renderObjects by viewModel.renderObjects.collectAsStateWithLifecycle()
 
     var actionIcon by remember { mutableStateOf<ImageVector?>(null) }
 
@@ -201,29 +201,31 @@ fun GlobeScreen(
         renderer.setDistance(controls.cameraDistance)
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.setObjects(
-            listOf(
-                RenderObject(
-                    id = 1,
-                    type = RenderObjectType.GLOBE,
-                    position = Vector3D(0.0, 0.0, 0.0),
-                    rotation = Vector3D(0.0, 0.0, 0.0),
-                    scale = Vector3D(1.0, 1.0, 1.0),
-                    isVisible = true,
-                    layer = 0
-                ),
-                RenderObject(
-                    id = 2,
-                    type = RenderObjectType.SATELLITE,
-                    position = Vector3D(1.25, 0.3, 0.0),
-                    rotation = Vector3D(0.0, 0.0, 0.0),
-                    scale = Vector3D(0.03, 0.03, 0.03),
-                    isVisible = true,
-                    layer = 1
+    LaunchedEffect(renderObjects.isEmpty()) {
+        if (renderObjects.isEmpty()) {
+            viewModel.setObjects(
+                listOf(
+                    RenderObject(
+                        id = 1,
+                        type = RenderObjectType.GLOBE,
+                        position = Vector3D(0.0, 0.0, 0.0),
+                        rotation = Vector3D(0.0, 0.0, 0.0),
+                        scale = Vector3D(1.0, 1.0, 1.0),
+                        isVisible = true,
+                        layer = 0
+                    ),
+                    RenderObject(
+                        id = 2,
+                        type = RenderObjectType.SATELLITE,
+                        position = Vector3D(1.25, 0.3, 0.0),
+                        rotation = Vector3D(0.0, 0.0, 0.0),
+                        scale = Vector3D(0.03, 0.03, 0.03),
+                        isVisible = true,
+                        layer = 1
+                    )
                 )
             )
-        )
+        }
     }
 }
 

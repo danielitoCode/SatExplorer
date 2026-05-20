@@ -19,6 +19,7 @@ enum class SatelliteType {
                 LEO,
                 MEO,
                 GEO,
+                HEO,
                 DEBRIS,
                 PAYLOAD,
                 ISS,

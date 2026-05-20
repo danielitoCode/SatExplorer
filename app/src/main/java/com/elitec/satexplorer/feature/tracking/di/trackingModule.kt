@@ -21,7 +21,7 @@ val trackingModule = module {
     single { HttpClient(OkHttp) }
     single { TleMapper() }
     single { CelestrakRemoteDataSource(get()) }
-    single<SatelliteRepository> { SatelliteRepositoryImpl(get(), get()) }
+    single<SatelliteRepository> { SatelliteRepositoryImpl(get(), get(), get()) }
     factory { LoadSatelliteFromApiUseCase(get()) }
     factory { LoadSatelliteManualUseCase(get()) }
     factory { ComputeSatellitePositionUseCase() }

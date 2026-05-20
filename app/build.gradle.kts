@@ -86,6 +86,7 @@ dependencies {
     implementation(libs.googleid)
     // Permission
     implementation(libs.compose.permission)
+    implementation(libs.coil.compose)
     // CameraX
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
