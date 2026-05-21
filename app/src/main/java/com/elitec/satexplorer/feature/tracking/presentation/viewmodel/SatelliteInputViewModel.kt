@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.elitec.satexplorer.feature.tracking.domain.caseuse.ComputeSatellitePositionUseCase
 import com.elitec.satexplorer.feature.tracking.domain.caseuse.LoadSatelliteFromApiUseCase
 import com.elitec.satexplorer.feature.tracking.domain.caseuse.LoadSatelliteManualUseCase
+import com.elitec.satexplorer.feature.tracking.domain.entity.Satellite
 import com.elitec.satexplorer.feature.tracking.domain.entity.Vector3D
 import com.elitec.satexplorer.feature.tracking.presentation.model.SatelliteUiState
 import com.elitec.satexplorer.feature.visualization.domain.entity.RenderObject
@@ -70,13 +71,33 @@ class SatelliteInputViewModel(
                 visualizationViewModel.setObjects(
                     listOf(
                         RenderObject(1, RenderObjectType.GLOBE, Vector3D(0.0, 0.0, 0.0), Vector3D(0.0, 0.0, 0.0), Vector3D(1.0, 1.0, 1.0), true, 0),
-                        RenderObject(2, RenderObjectType.SATELLITE, pos, Vector3D(0.0, 0.0, headingZDeg), Vector3D(satScale, satScale, satScale), true, 1),
-                        RenderObject(3, RenderObjectType.UI_MARKER, pos, Vector3D(0.0, 0.0, headingZDeg), Vector3D(arrowLength, satScale * 0.55, satScale * 0.55), true, 2)
+                        buildOrbitPath(sat),
+                        RenderObject(2, RenderObjectType.SATELLITE, pos, Vector3D(0.0, 0.0, headingZDeg), Vector3D(satScale, satScale, satScale), true, 2),
+                        RenderObject(3, RenderObjectType.UI_MARKER, pos, Vector3D(0.0, 0.0, headingZDeg), Vector3D(arrowLength, satScale * 0.55, satScale * 0.55), true, 3)
                     )
                 )
                 previous = pos
                 delay(16)
             }
         }
+    }
+
+    private fun buildOrbitPath(satellite: Satellite): RenderObject {
+        val radius = when {
+            satellite.tle.meanMotion >= 11.0 -> 1.25
+            satellite.tle.meanMotion >= 2.0 -> 1.75
+            satellite.tle.meanMotion > 0.0 -> 2.35
+            else -> 1.35
+        }
+
+        return RenderObject(
+            id = 4,
+            type = RenderObjectType.ORBIT_PATH,
+            position = Vector3D(0.0, 0.0, 0.0),
+            rotation = Vector3D(satellite.tle.inclination, 0.0, satellite.tle.raan),
+            scale = Vector3D(radius, radius, radius),
+            isVisible = true,
+            layer = 1
+        )
     }
 }

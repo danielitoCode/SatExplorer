@@ -19,7 +19,12 @@ class ComputeSatellitePositionUseCase {
         val t = epochMillis / 1000.0
         val phase = t * angularSpeed
 
-        val radius = 1.25
+        val radius = when {
+            meanMotion >= 11.0 -> 1.25
+            meanMotion >= 2.0 -> 1.75
+            meanMotion > 0.0 -> 2.35
+            else -> 1.35
+        }
         val xOrbital = radius * cos(phase)
         val yOrbital = radius * sin(phase)
 

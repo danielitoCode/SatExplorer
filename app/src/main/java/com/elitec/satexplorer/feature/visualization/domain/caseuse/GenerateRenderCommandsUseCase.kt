@@ -50,6 +50,8 @@ class GenerateRenderCommandsUseCase {
     private fun colorFor(type: RenderObjectType): FloatArray = when (type) {
         RenderObjectType.GLOBE -> floatArrayOf(0.16f, 0.45f, 0.82f, 1f)
         RenderObjectType.SATELLITE -> floatArrayOf(0.95f, 0.95f, 0.95f, 1f)
+        RenderObjectType.ORBIT_PATH -> floatArrayOf(0.0f, 217f / 255f, 1.0f, 1.0f)
+        RenderObjectType.UI_MARKER -> floatArrayOf(0.2f, 1.0f, 0.55f, 1f)
         else -> floatArrayOf(0.7f, 0.7f, 0.7f, 1f)
     }
 }

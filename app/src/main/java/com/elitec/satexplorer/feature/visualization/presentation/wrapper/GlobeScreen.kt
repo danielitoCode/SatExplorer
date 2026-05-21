@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.elitec.satexplorer.feature.tracking.domain.entity.Satellite
 import com.elitec.satexplorer.feature.tracking.domain.entity.Vector3D
 import com.elitec.satexplorer.feature.visualization.domain.entity.RenderObject
 import com.elitec.satexplorer.feature.visualization.domain.entity.RenderObjectType
@@ -74,6 +76,7 @@ import org.koin.compose.koinInject
 @Composable
 fun GlobeScreen(
     modifier: Modifier = Modifier,
+    selectedSatellite: Satellite? = null,
     viewModel: VisualizationViewModel = koinInject(),
     renderer: GlSurfaceRenderer = koinInject(),
 ) {
@@ -163,12 +166,32 @@ fun GlobeScreen(
             }
 
         }
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
+        ) {
+            selectedSatellite?.let { satellite ->
+                SelectedSatelliteBadge(
+                    satellite = satellite,
+                    modifier = Modifier
+                        .padding(10.dp)
+                )
+            }
 
-        TelemetrySection(
-            modifier = Modifier.width(130.dp)
-                .align(Alignment.TopEnd)
-                .padding(10.dp)
-        )
+            Spacer(
+                modifier = Modifier.width(10.dp)
+            )
+
+            TelemetrySection(
+                modifier = Modifier.width(130.dp)
+                    .padding(10.dp)
+            )
+
+        }
+
+
+
         AnimatedVisibility(
             enter = fadeIn(),
             exit = fadeOut(),
@@ -224,6 +247,45 @@ fun GlobeScreen(
                         layer = 1
                     )
                 )
+            )
+        }
+    }
+}
+
+@Composable
+private fun SelectedSatelliteBadge(
+    satellite: Satellite,
+    modifier: Modifier = Modifier
+) {
+    val orbitLabel = if (satellite.type.name == "GEO" || satellite.tle.meanMotion in 0.9..1.1) {
+        "GEOSTATIONARY ORBIT"
+    } else {
+        "${satellite.type.name} ORBIT"
+    }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
+        modifier = modifier.widthIn(max = 220.dp)
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(10.dp)
+        ) {
+            Text(
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                text = orbitLabel
+            )
+            Text(
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                text = satellite.name
+            )
+            Text(
+                style = MaterialTheme.typography.bodySmall,
+                text = "NORAD ${satellite.noradId}"
             )
         }
     }

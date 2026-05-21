@@ -118,7 +118,7 @@ private fun RenderControlButton(
         border = BorderStroke(
             1.dp, MaterialTheme.colorScheme.primary
         ),
-        color = MaterialTheme.colorScheme.primary.copy(0.1f),
+        color = MaterialTheme.colorScheme.primary.copy(0.2f),
         modifier = Modifier.size(30.dp),
         onClick = onRepeat,
         interactionSource = interactionSource

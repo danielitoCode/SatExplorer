@@ -23,6 +23,12 @@ class VisualizationViewModel(
     private val _controlsState = MutableStateFlow(ControlsState())
     val controlsState = _controlsState.asStateFlow()
 
+    private val _showSatelliteData = MutableStateFlow(false)
+    val showSatelliteData = _showSatelliteData.asStateFlow()
+
+    private val _satelliteScreenPos = MutableStateFlow(Pair(0f, 0f))
+    val satelliteScreenPos = _satelliteScreenPos.asStateFlow()
+
 
     init {
         viewModelScope.launch {
@@ -57,13 +63,55 @@ class VisualizationViewModel(
         _controlsState.value = _controlsState.value.copy(pitch = (_controlsState.value.pitch - 6f).coerceIn(-85f, 85f))
     }
 
+    fun panLeft() {
+        _controlsState.value = _controlsState.value.copy(panX = _controlsState.value.panX - 0.15f)
+    }
+
+    fun panRight() {
+        _controlsState.value = _controlsState.value.copy(panX = _controlsState.value.panX + 0.15f)
+    }
+
+    fun panUp() {
+        _controlsState.value = _controlsState.value.copy(panY = _controlsState.value.panY + 0.15f)
+    }
+
+    fun panDown() {
+        _controlsState.value = _controlsState.value.copy(panY = _controlsState.value.panY - 0.15f)
+    }
+
+    fun zoomIn() {
+        _controlsState.value = _controlsState.value.copy(cameraDistance = (_controlsState.value.cameraDistance - 0.3f).coerceIn(1.25f, 10f))
+    }
+
+    fun zoomOut() {
+        _controlsState.value = _controlsState.value.copy(cameraDistance = (_controlsState.value.cameraDistance + 0.3f).coerceIn(1.25f, 10f))
+    }
+
     fun updateZoom(distance: Float) {
         _controlsState.value = _controlsState.value.copy(cameraDistance = distance.coerceIn(1.25f, 10f))
+    }
+
+    fun resetCamera() {
+        _controlsState.value = ControlsState()
+    }
+
+    fun toggleSatelliteData() {
+        _showSatelliteData.value = !_showSatelliteData.value
+    }
+
+    fun hideSatelliteData() {
+        _showSatelliteData.value = false
+    }
+
+    fun updateSatelliteScreenPos(x: Float, y: Float) {
+        _satelliteScreenPos.value = Pair(x, y)
     }
 
     data class ControlsState(
         val yaw: Float = 0f,
         val pitch: Float = 18f,
-        val cameraDistance: Float = 3.2f
+        val cameraDistance: Float = 3.2f,
+        val panX: Float = 0f,
+        val panY: Float = 0f
     )
 }

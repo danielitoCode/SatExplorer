@@ -1,6 +1,9 @@
 package com.elitec.satexplorer.feature.satellite.presentation.screen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,11 +20,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SettingsInputComponent
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -33,13 +39,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.elitec.satexplorer.R
 import com.elitec.satexplorer.feature.satellite.domain.entity.SatelliteCatalogCategory
 import com.elitec.satexplorer.feature.satellite.domain.entity.SatelliteVisualDetails
 import com.elitec.satexplorer.feature.satellite.presentation.viewmodel.SatelliteSearchViewModel
@@ -62,10 +71,34 @@ fun SatelliteScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.fillMaxSize()
     ) {
-        Text(
-            style = MaterialTheme.typography.titleLarge,
-            text = "MISSION CONTROL"
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                style = MaterialTheme.typography.titleLarge,
+                text = "MISSION CONTROL"
+            )
+            AnimatedVisibility(
+                visible =state.satellites.isNotEmpty() && !state.isLoading
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        style = MaterialTheme.typography.labelMedium,
+                        text = "Catalog results"
+                    )
+                    Text(
+                        style = MaterialTheme.typography.titleMedium,
+                        text = state.totalItems.toString()
+                    )
+                }
+            }
+        }
 
         OutlinedTextField(
             value = state.query,
@@ -91,6 +124,7 @@ fun SatelliteScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
+
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth()
@@ -111,46 +145,70 @@ fun SatelliteScreen(
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth()
+        AnimatedVisibility(
+            visible =state.satellites.isNotEmpty() && !state.isLoading
         ) {
-            Button(
-                onClick = viewModel::submitSearch,
-                modifier = Modifier.weight(1f)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Refresh")
-            }
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.weight(1f)
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+
+                Button(
+                    shape = RoundedCornerShape(10.dp),
+                    onClick = viewModel::submitSearch,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        style = MaterialTheme.typography.labelMedium,
-                        text = "Catalog results"
-                    )
-                    Text(
-                        style = MaterialTheme.typography.titleMedium,
-                        text = state.totalItems.toString()
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "refresh"
+                        )
+                        Text("Refresh")
+                    }
+                }
+                IconButton(
+                    onClick = {}
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SettingsInputComponent,
+                        contentDescription = "filters",
+                        modifier = Modifier.rotate(90f)
                     )
                 }
             }
         }
 
-        if (state.isLoading) {
+        AnimatedVisibility(
+            enter = fadeIn(),
+            visible = state.isLoading
+        ) {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+                modifier = Modifier.fillMaxSize()
             ) {
-                CircularProgressIndicator()
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        style = MaterialTheme.typography.headlineSmall,
+                        text = "Loading satellites..."
+                    )
+                }
             }
-        } else {
+        }
+
+        AnimatedVisibility(
+            enter = fadeIn(),
+            visible =state.satellites.isNotEmpty() && !state.isLoading
+        ) {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f)
@@ -197,6 +255,7 @@ fun SatelliteScreen(
 
                         state.hasNextPage -> {
                             Button(
+                                shape = RoundedCornerShape(10.dp),
                                 onClick = viewModel::loadNextPage,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -204,7 +263,7 @@ fun SatelliteScreen(
                             }
                         }
 
-                        state.satellites.isEmpty() -> {
+                        state.satellites.isEmpty() && !state.isLoading -> {
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -327,6 +386,7 @@ private fun SatelliteCatalogCard(
             )
 
             Button(
+                shape = RoundedCornerShape(10.dp),
                 onClick = onClick,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -375,12 +435,12 @@ private fun SatelliteImageSection(
             }
 
             else -> {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Text("No image available in SatNOGS")
-                }
+                Image(
+                    painter = painterResource(R.drawable.tianlong),
+                    contentDescription = "satellite placeholder image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
         }
     }

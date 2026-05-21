@@ -2,6 +2,7 @@ package com.elitec.satexplorer.feature.visualization.presentation.renderer
 
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
+import android.opengl.Matrix
 import com.elitec.satexplorer.feature.visualization.data.renderEngine.OpenGlRendererEngine
 import com.elitec.satexplorer.feature.visualization.domain.caseuse.GenerateRenderCommandsUseCase
 import com.elitec.satexplorer.feature.visualization.presentation.util.RenderStateHolder
@@ -14,12 +15,23 @@ class GlSurfaceRenderer(
     private val stateHolder: RenderStateHolder
 ) : GLSurfaceView.Renderer {
 
+    private var viewportWidth = 0
+    private var viewportHeight = 0
+    private val lastMvpMatrix = FloatArray(16)
+
     fun setZoom(scaleFactor: Float) = engine.setCameraZoom(scaleFactor)
 
     fun setOrbit(yaw: Float, pitch: Float) = engine.setCameraOrbit(yaw, pitch)
 
     fun setDistance(distance: Float) = engine.setCameraDistance(distance)
+
+    fun setPan(panX: Float, panY: Float) = engine.setCameraPan(panX, panY)
+
     fun orbit(deltaX: Float, deltaY: Float) = engine.orbitCamera(deltaX, deltaY)
+
+    fun getMvpMatrix(): FloatArray = lastMvpMatrix.clone()
+
+    fun getViewportSize(): Pair<Int, Int> = Pair(viewportWidth, viewportHeight)
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0.04f, 0.05f, 0.1f, 1f)
@@ -31,6 +43,8 @@ class GlSurfaceRenderer(
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
+        viewportWidth = width
+        viewportHeight = height
         engine.onViewportChanged(width, height)
     }
 
@@ -39,5 +53,6 @@ class GlSurfaceRenderer(
         val sceneGraph = stateHolder.sceneGraph
         val commands = generateCommands(sceneGraph)
         engine.render(commands)
+        //engine.getLastMvpMatrix(lastMvpMatrix)
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elitec.satexplorer.feature.analitics.presentation.screens.DashBoardScreen
 import com.elitec.satexplorer.feature.auth.domain.entity.AccountState
 import com.elitec.satexplorer.feature.auth.domain.entity.SystemSettingsConfiguration
@@ -69,6 +71,8 @@ fun InternalNavigationWrapper(
         AccountState.ACTIVE,
         profileConfig)
     val backStack = rememberNavBackStack(InternalRoutes.MainHome)
+    val trackingViewModel: SatelliteInputViewModel = koinViewModel()
+    val trackingState by trackingViewModel.uiState.collectAsStateWithLifecycle()
     val navItems = listOf(
         NavBarItem("Home", Icons.Default.Dashboard, action = {
             backStack.navigateTo(InternalRoutes.MainHome)
@@ -121,7 +125,10 @@ fun InternalNavigationWrapper(
             modifier = Modifier.weight(1f).fillMaxSize().padding(10.dp),
             entryProvider = entryProvider {
                 entry<InternalRoutes.Orbit> {
-                    GlobeScreen(modifier = Modifier.fillMaxSize())
+                    GlobeScreen(
+                        selectedSatellite = trackingState.satellite,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
                 entry<InternalRoutes.MainHome> {
                     DashBoardScreen(
@@ -134,7 +141,6 @@ fun InternalNavigationWrapper(
                     )
                 }
                 entry<InternalRoutes.Search> {
-                    val trackingViewModel: SatelliteInputViewModel = koinViewModel()
                     SatelliteScreen(
                         modifier = Modifier.fillMaxSize(),
                         onSatelliteSelected = { satellite ->
