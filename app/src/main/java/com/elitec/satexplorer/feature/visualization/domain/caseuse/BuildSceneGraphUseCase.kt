@@ -11,13 +11,13 @@ class BuildSceneGraphUseCase {
 
         val globe = objects.filter { it.type == RenderObjectType.GLOBE }
 
-        val satellites = objects.filter { it.type == RenderObjectType.SATELLITE }
+        val childObjects = objects.filter { it.type != RenderObjectType.GLOBE }
 
         val globeNodes = globe.map { g ->
             SceneGraphNode(
                 renderObject = g,
-                children = satellites.map { s ->
-                    SceneGraphNode(renderObject = s)
+                children = childObjects.map { child ->
+                    SceneGraphNode(renderObject = child)
                 }
             )
         }

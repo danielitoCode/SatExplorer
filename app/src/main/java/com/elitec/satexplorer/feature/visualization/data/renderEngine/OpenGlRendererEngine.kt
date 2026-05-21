@@ -79,6 +79,8 @@ class OpenGlRendererEngine(
         directionArrowVertexCount = directionArrowVertices.limit() / COORDS_PER_VERTEX
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+        GLES20.glEnable(GLES20.GL_BLEND)
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         GLES20.glEnable(GLES20.GL_CULL_FACE)
         GLES20.glCullFace(GLES20.GL_BACK)
     }
@@ -163,19 +165,20 @@ class OpenGlRendererEngine(
             }
             RenderObjectType.ORBIT_PATH -> {
                 GLES20.glUniform1f(planetDetailHandle, 0f)
-                GLES20.glDisable(GLES20.GL_DEPTH_TEST)
+                GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+                GLES20.glDepthMask(false)
                 orbitPathVertices.position(0)
                 GLES20.glEnableVertexAttribArray(positionHandle)
                 GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, STRIDE_BYTES, orbitPathVertices)
                 GLES20.glDisableVertexAttribArray(texCoordHandle)
                 GLES20.glVertexAttrib2f(texCoordHandle, 0f, 0f)
-                GLES20.glLineWidth(6f)
-                GLES20.glUniform4f(objectColorHandle, 0.18f, 0.72f, 1f, 0.25f)
+                GLES20.glLineWidth(7.5f)
+                GLES20.glUniform4f(objectColorHandle, 0.25f, 0.82f, 1f, 0.45f)
                 GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, orbitPathVertexCount)
-                GLES20.glLineWidth(2.2f)
-                GLES20.glUniform4f(objectColorHandle, 0.95f, 0.98f, 1f, 0.95f)
+                GLES20.glLineWidth(3.2f)
+                GLES20.glUniform4f(objectColorHandle, 0.95f, 0.99f, 1f, 0.98f)
                 GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, orbitPathVertexCount)
-                GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+                GLES20.glDepthMask(true)
             }
             RenderObjectType.UI_MARKER -> {
                 GLES20.glUniform1f(planetDetailHandle, 0f)

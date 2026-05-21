@@ -51,6 +51,16 @@ class VisualizationViewModel(
         _controlsState.value = _controlsState.value.copy(yaw = _controlsState.value.yaw - 8f)
     }
 
+    fun setCameraPose(yaw: Float, pitch: Float, distance: Float? = null) {
+        _controlsState.value = _controlsState.value.copy(
+            yaw = yaw,
+            pitch = pitch.coerceIn(-85f, 85f),
+            cameraDistance = distance?.coerceIn(1.25f, 10f) ?: _controlsState.value.cameraDistance,
+            panX = 0f,
+            panY = 0f
+        )
+    }
+
     fun rotateRight() {
         _controlsState.value = _controlsState.value.copy(yaw = _controlsState.value.yaw + 8f)
     }

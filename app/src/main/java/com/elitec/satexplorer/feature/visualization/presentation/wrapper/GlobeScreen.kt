@@ -2,6 +2,8 @@ package com.elitec.satexplorer.feature.visualization.presentation.wrapper
 
 import android.opengl.GLSurfaceView
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -60,8 +62,12 @@ import com.elitec.satexplorer.feature.visualization.presentation.components.Rend
 import com.elitec.satexplorer.feature.visualization.presentation.renderer.GlSurfaceRenderer
 import com.elitec.satexplorer.feature.visualization.presentation.viewmodel.VisualizationViewModel
 import com.elitec.satexplorer.infrastructure.presentation.theme.signalGreen
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -227,11 +233,35 @@ fun GlobeScreen(
             val eccentricity = satellite.tle.eccentricity.coerceIn(0.0, 0.95)
             val minorAxis = orbitRadius * sqrt(1.0 - eccentricity * eccentricity)
             val phase = Math.toRadians(satellite.tle.meanAnomaly)
-            val pos = Vector3D(
-                orbitRadius * cos(phase),
-                minorAxis * sin(phase),
-                0.0
+
+            val orbitRotation = Vector3D(
+                satellite.tle.inclination,
+                satellite.tle.argumentOfPerigee,
+                satellite.tle.raan
             )
+            val pos = rotateVectorByDegrees(
+                vector = Vector3D(
+                    orbitRadius * cos(phase),
+                    minorAxis * sin(phase),
+                    0.0
+                ),
+                rotation = orbitRotation
+            )
+
+            val (targetYaw, targetPitch) = satelliteCameraPose(pos)
+            val yawAnim = Animatable(controls.yaw)
+            val pitchAnim = Animatable(controls.pitch)
+            val distAnim = Animatable(controls.cameraDistance)
+            coroutineScope {
+                launch { yawAnim.animateTo(targetYaw, animationSpec = tween(durationMillis = 900)) }
+                launch { pitchAnim.animateTo(targetPitch, animationSpec = tween(durationMillis = 900)) }
+                launch { distAnim.animateTo((orbitRadius + 0.9).toFloat().coerceIn(1.45f, 4.8f), animationSpec = tween(durationMillis = 900)) }
+                while (yawAnim.isRunning || pitchAnim.isRunning || distAnim.isRunning) {
+                    viewModel.setCameraPose(yawAnim.value, pitchAnim.value, distAnim.value)
+                    delay(16)
+                }
+            }
+            viewModel.setCameraPose(targetYaw, targetPitch, (orbitRadius + 0.9).toFloat().coerceIn(1.45f, 4.8f))
 
             viewModel.setObjects(
                 buildList {
@@ -360,6 +390,43 @@ private fun SelectedSatelliteBadge(
             }
         }
     }
+}
+
+private fun rotateVectorByDegrees(vector: Vector3D, rotation: Vector3D): Vector3D {
+    fun toRad(deg: Double) = deg * (PI / 180.0)
+
+    val rx = toRad(rotation.x)
+    val ry = toRad(rotation.y)
+    val rz = toRad(rotation.z)
+
+    var x = vector.x
+    var y = vector.y
+    var z = vector.z
+
+    // Rotate around X
+    val y1 = y * cos(rx) - z * sin(rx)
+    val z1 = y * sin(rx) + z * cos(rx)
+    y = y1
+    z = z1
+
+    // Rotate around Y
+    val x2 = x * cos(ry) + z * sin(ry)
+    val z2 = -x * sin(ry) + z * cos(ry)
+    x = x2
+    z = z2
+
+    // Rotate around Z
+    val x3 = x * cos(rz) - y * sin(rz)
+    val y3 = x * sin(rz) + y * cos(rz)
+
+    return Vector3D(x3, y3, z)
+}
+
+private fun satelliteCameraPose(position: Vector3D): Pair<Float, Float> {
+    val yaw = Math.toDegrees(atan2(position.x, position.z)).toFloat()
+    val horizontal = sqrt(position.x * position.x + position.z * position.z)
+    val pitch = Math.toDegrees(atan2(position.y, horizontal)).toFloat().coerceIn(-70f, 70f)
+    return yaw to pitch
 }
 
 @Composable
