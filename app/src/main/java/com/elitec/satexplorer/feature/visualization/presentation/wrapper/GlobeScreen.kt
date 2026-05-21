@@ -1,8 +1,6 @@
 package com.elitec.satexplorer.feature.visualization.presentation.wrapper
 
 import android.opengl.GLSurfaceView
-import android.view.MotionEvent
-import android.view.ScaleGestureDetector
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,16 +24,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Minimize
 import androidx.compose.material3.Button
-import androidx.compose.material3.DateRangePickerState
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -44,7 +36,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,7 +48,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -72,6 +62,9 @@ import com.elitec.satexplorer.feature.visualization.presentation.viewmodel.Visua
 import com.elitec.satexplorer.infrastructure.presentation.theme.signalGreen
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 @Composable
 fun GlobeScreen(
@@ -140,6 +133,7 @@ fun GlobeScreen(
                     viewModel.rotateRight()
                     actionIcon = Icons.AutoMirrored.Filled.KeyboardArrowRight
                 }, {
+                    viewModel.centerOnSatellite()
                     actionIcon = Icons.Default.GpsFixed
                 }
                 )
@@ -190,8 +184,6 @@ fun GlobeScreen(
 
         }
 
-
-
         AnimatedVisibility(
             enter = fadeIn(),
             exit = fadeOut(),
@@ -224,6 +216,69 @@ fun GlobeScreen(
         renderer.setDistance(controls.cameraDistance)
     }
 
+    LaunchedEffect(selectedSatellite?.noradId) {
+        selectedSatellite?.let { satellite ->
+            val isGeostationary = satellite.type.name == "GEO" || satellite.tle.meanMotion in 0.99..1.01
+            val orbitRadius = when {
+                satellite.tle.meanMotion >= 11.0 -> 1.22
+                satellite.tle.meanMotion >= 2.0 -> 1.72
+                else -> 2.28
+            }
+            val eccentricity = satellite.tle.eccentricity.coerceIn(0.0, 0.95)
+            val minorAxis = orbitRadius * sqrt(1.0 - eccentricity * eccentricity)
+            val phase = Math.toRadians(satellite.tle.meanAnomaly)
+            val pos = Vector3D(
+                orbitRadius * cos(phase),
+                minorAxis * sin(phase),
+                0.0
+            )
+
+            viewModel.setObjects(
+                buildList {
+                    add(
+                        RenderObject(
+                            id = 1,
+                            type = RenderObjectType.GLOBE,
+                            position = Vector3D(0.0, 0.0, 0.0),
+                            rotation = Vector3D(0.0, 0.0, 0.0),
+                            scale = Vector3D(1.0, 1.0, 1.0),
+                            isVisible = true,
+                            layer = 0
+                        )
+                    )
+                    if (!isGeostationary) {
+                        add(
+                            RenderObject(
+                                id = 4,
+                                type = RenderObjectType.ORBIT_PATH,
+                                position = Vector3D(0.0, 0.0, 0.0),
+                                rotation = Vector3D(
+                                    satellite.tle.inclination,
+                                    satellite.tle.argumentOfPerigee,
+                                    satellite.tle.raan
+                                ),
+                                scale = Vector3D(orbitRadius, minorAxis, orbitRadius),
+                                isVisible = true,
+                                layer = 1
+                            )
+                        )
+                    }
+                    add(
+                        RenderObject(
+                            id = 2,
+                            type = RenderObjectType.SATELLITE,
+                            position = pos,
+                            rotation = Vector3D(0.0, 0.0, 0.0),
+                            scale = Vector3D(0.024, 0.024, 0.024),
+                            isVisible = true,
+                            layer = 2
+                        )
+                    )
+                }
+            )
+        }
+    }
+
     LaunchedEffect(renderObjects.isEmpty()) {
         if (renderObjects.isEmpty()) {
             viewModel.setObjects(
@@ -245,6 +300,15 @@ fun GlobeScreen(
                         scale = Vector3D(0.03, 0.03, 0.03),
                         isVisible = true,
                         layer = 1
+                    ),
+                    RenderObject(
+                        id = 3,
+                        type = RenderObjectType.SATELLITE,
+                        position = Vector3D(1.25, 0.3, 0.0),
+                        rotation = Vector3D(0.0, 0.0, 0.0),
+                        scale = Vector3D(0.018, 0.018, 0.018),
+                        isVisible = true,
+                        layer = 2
                     )
                 )
             )
@@ -257,7 +321,7 @@ private fun SelectedSatelliteBadge(
     satellite: Satellite,
     modifier: Modifier = Modifier
 ) {
-    val orbitLabel = if (satellite.type.name == "GEO" || satellite.tle.meanMotion in 0.9..1.1) {
+    val orbitLabel = if (satellite.type.name == "GEO" || satellite.tle.meanMotion in 0.99..1.01) {
         "GEOSTATIONARY ORBIT"
     } else {
         "${satellite.type.name} ORBIT"
@@ -287,6 +351,13 @@ private fun SelectedSatelliteBadge(
                 style = MaterialTheme.typography.bodySmall,
                 text = "NORAD ${satellite.noradId}"
             )
+            if (satellite.type.name == "GEO" || satellite.tle.meanMotion in 0.99..1.01) {
+                Text(
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                    text = "Sin traza: satélite geoestacionario"
+                )
+            }
         }
     }
 }

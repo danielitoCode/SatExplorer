@@ -49,6 +49,8 @@ class OpenGlRendererEngine(
     private var orbitPathVertexCount: Int = 0
     private var earthDayTextureId: Int = 0
     private var earthNightTextureId: Int = 0
+    private lateinit var directionArrowVertices: FloatBuffer
+    private var directionArrowVertexCount: Int = 0
 
     fun init() {
         Matrix.setIdentityM(currentModelMatrix, 0)
@@ -72,6 +74,9 @@ class OpenGlRendererEngine(
         orbitPathVertexCount = orbitPathVertices.limit() / COORDS_PER_VERTEX
         earthDayTextureId = loadEarthTexture("earth_day_8k", "earth_daymap")
         earthNightTextureId = loadEarthTexture("earth_night_8k", "earth_nightmap")
+
+        directionArrowVertices = createDirectionArrowVertexBuffer()
+        directionArrowVertexCount = directionArrowVertices.limit() / COORDS_PER_VERTEX
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glEnable(GLES20.GL_CULL_FACE)
@@ -164,9 +169,22 @@ class OpenGlRendererEngine(
                 GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, STRIDE_BYTES, orbitPathVertices)
                 GLES20.glDisableVertexAttribArray(texCoordHandle)
                 GLES20.glVertexAttrib2f(texCoordHandle, 0f, 0f)
-                GLES20.glLineWidth(4f)
+                GLES20.glLineWidth(6f)
+                GLES20.glUniform4f(objectColorHandle, 0.18f, 0.72f, 1f, 0.25f)
+                GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, orbitPathVertexCount)
+                GLES20.glLineWidth(2.2f)
+                GLES20.glUniform4f(objectColorHandle, 0.95f, 0.98f, 1f, 0.95f)
                 GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, orbitPathVertexCount)
                 GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+            }
+            RenderObjectType.UI_MARKER -> {
+                GLES20.glUniform1f(planetDetailHandle, 0f)
+                directionArrowVertices.position(0)
+                GLES20.glEnableVertexAttribArray(positionHandle)
+                GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, STRIDE_BYTES, directionArrowVertices)
+                GLES20.glDisableVertexAttribArray(texCoordHandle)
+                GLES20.glVertexAttrib2f(texCoordHandle, 0f, 0f)
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, directionArrowVertexCount)
             }
             else -> {
                 GLES20.glUniform1f(planetDetailHandle, 0f)
@@ -260,13 +278,37 @@ class OpenGlRendererEngine(
 
     private fun createSatelliteModelVertexBuffer(): FloatBuffer {
         val vertices = mutableListOf<Float>()
-        addBox(vertices, -0.55f, -0.55f, -0.35f, 0.55f, 0.55f, 0.35f)
-        addBox(vertices, -2.15f, -0.08f, -0.04f, -0.65f, 0.08f, 0.04f)
-        addBox(vertices, 0.65f, -0.08f, -0.04f, 2.15f, 0.08f, 0.04f)
-        addBox(vertices, -3.4f, -0.35f, -0.03f, -2.15f, 0.35f, 0.03f)
-        addBox(vertices, 2.15f, -0.35f, -0.03f, 3.4f, 0.35f, 0.03f)
-        addBox(vertices, -0.18f, 0.55f, -0.18f, 0.18f, 1.15f, 0.18f)
+        addBox(vertices, -0.36f, -0.26f, -0.24f, 0.36f, 0.26f, 0.24f)
+        addBox(vertices, -1.35f, -0.06f, -0.03f, -0.42f, 0.06f, 0.03f)
+        addBox(vertices, 0.42f, -0.06f, -0.03f, 1.35f, 0.06f, 0.03f)
+        addBox(vertices, -2.05f, -0.22f, -0.02f, -1.35f, 0.22f, 0.02f)
+        addBox(vertices, 1.35f, -0.22f, -0.02f, 2.05f, 0.22f, 0.02f)
+        addBox(vertices, -0.11f, 0.26f, -0.11f, 0.11f, 0.72f, 0.11f)
         return createFloatBuffer(vertices.toFloatArray())
+    }
+
+    private fun createDirectionArrowVertexBuffer(): FloatBuffer {
+        val vertices = mutableListOf<Float>()
+        // Flecha tipo dardo (punta + aletas) orientada al eje +X
+        addPyramid(vertices, 0.8f, 0f, 0f, -0.2f, 0.28f, 0.14f)
+        addPyramid(vertices, 0.65f, 0f, 0f, -0.35f, -0.26f, 0.12f)
+        return createFloatBuffer(vertices.toFloatArray())
+    }
+
+    private fun addPyramid(target: MutableList<Float>, tipX: Float, tipY: Float, tipZ: Float, baseX: Float, halfWidth: Float, halfDepth: Float) {
+        fun v(x: Float, y: Float, z: Float) { target.add(x); target.add(y); target.add(z) }
+        val b1 = floatArrayOf(baseX, -halfWidth, -halfDepth)
+        val b2 = floatArrayOf(baseX, halfWidth, -halfDepth)
+        val b3 = floatArrayOf(baseX, halfWidth, halfDepth)
+        val b4 = floatArrayOf(baseX, -halfWidth, halfDepth)
+        // caras laterales
+        v(tipX, tipY, tipZ); v(b1[0], b1[1], b1[2]); v(b2[0], b2[1], b2[2])
+        v(tipX, tipY, tipZ); v(b2[0], b2[1], b2[2]); v(b3[0], b3[1], b3[2])
+        v(tipX, tipY, tipZ); v(b3[0], b3[1], b3[2]); v(b4[0], b4[1], b4[2])
+        v(tipX, tipY, tipZ); v(b4[0], b4[1], b4[2]); v(b1[0], b1[1], b1[2])
+        // base
+        v(b1[0], b1[1], b1[2]); v(b3[0], b3[1], b3[2]); v(b2[0], b2[1], b2[2])
+        v(b1[0], b1[1], b1[2]); v(b4[0], b4[1], b4[2]); v(b3[0], b3[1], b3[2])
     }
 
     private fun addBox(target: MutableList<Float>, minX: Float, minY: Float, minZ: Float, maxX: Float, maxY: Float, maxZ: Float) {

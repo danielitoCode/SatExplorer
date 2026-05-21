@@ -107,6 +107,15 @@ class VisualizationViewModel(
         _satelliteScreenPos.value = Pair(x, y)
     }
 
+    fun centerOnSatellite() {
+        _controlsState.value = _controlsState.value.copy(
+            yaw = 0f,
+            pitch = 18f,
+            panX = 0f,
+            panY = 0f
+        )
+    }
+
     data class ControlsState(
         val yaw: Float = 0f,
         val pitch: Float = 18f,

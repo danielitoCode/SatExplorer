@@ -65,15 +65,15 @@ class SatelliteInputViewModel(
                 val speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z)
                 val altitude = sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z)
                 val headingZDeg = Math.toDegrees(atan2(velocity.y, velocity.x))
-                val arrowLength = (0.08 + speed * 25.0).coerceIn(0.08, 0.20)
-                val satScale = (0.02 + (altitude - 1.0) * 0.015).coerceIn(0.02, 0.06)
+                val arrowLength = (0.14 + speed * 30.0).coerceIn(0.14, 0.28)
+                val satScale = (0.016 + (altitude - 1.0) * 0.010).coerceIn(0.016, 0.038)
 
                 visualizationViewModel.setObjects(
                     listOf(
                         RenderObject(1, RenderObjectType.GLOBE, Vector3D(0.0, 0.0, 0.0), Vector3D(0.0, 0.0, 0.0), Vector3D(1.0, 1.0, 1.0), true, 0),
                         buildOrbitPath(sat),
                         RenderObject(2, RenderObjectType.SATELLITE, pos, Vector3D(0.0, 0.0, headingZDeg), Vector3D(satScale, satScale, satScale), true, 2),
-                        RenderObject(3, RenderObjectType.UI_MARKER, pos, Vector3D(0.0, 0.0, headingZDeg), Vector3D(arrowLength, satScale * 0.55, satScale * 0.55), true, 3)
+                        RenderObject(3, RenderObjectType.UI_MARKER, pos, Vector3D(0.0, 0.0, headingZDeg), Vector3D(arrowLength, satScale * 0.9, satScale * 0.75), true, 3)
                     )
                 )
                 previous = pos
@@ -83,19 +83,27 @@ class SatelliteInputViewModel(
     }
 
     private fun buildOrbitPath(satellite: Satellite): RenderObject {
-        val radius = when {
-            satellite.tle.meanMotion >= 11.0 -> 1.25
-            satellite.tle.meanMotion >= 2.0 -> 1.75
-            satellite.tle.meanMotion > 0.0 -> 2.35
-            else -> 1.35
+        val meanMotion = satellite.tle.meanMotion.coerceAtLeast(0.1)
+        val orbitRadius = when {
+            meanMotion >= 11.0 -> 1.22
+            meanMotion >= 2.0 -> 1.72
+            else -> 2.28
         }
+
+        // b = a * sqrt(1 - e^2), aproximando una elipse orbital a partir de TLE
+        val eccentricity = satellite.tle.eccentricity.coerceIn(0.0, 0.95)
+        val minorAxis = orbitRadius * sqrt(1.0 - eccentricity * eccentricity)
 
         return RenderObject(
             id = 4,
             type = RenderObjectType.ORBIT_PATH,
             position = Vector3D(0.0, 0.0, 0.0),
-            rotation = Vector3D(satellite.tle.inclination, 0.0, satellite.tle.raan),
-            scale = Vector3D(radius, radius, radius),
+            rotation = Vector3D(
+                satellite.tle.inclination,
+                satellite.tle.argumentOfPerigee,
+                satellite.tle.raan
+            ),
+            scale = Vector3D(orbitRadius, minorAxis, orbitRadius),
             isVisible = true,
             layer = 1
         )
