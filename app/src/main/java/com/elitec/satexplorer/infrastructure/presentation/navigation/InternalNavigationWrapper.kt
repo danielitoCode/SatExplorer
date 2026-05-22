@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +30,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.elitec.satexplorer.feature.analitics.presentation.screens.DashBoardScreen
+import com.elitec.satexplorer.feature.analitics.presentation.viewmodel.DashboardViewModel
 import com.elitec.satexplorer.feature.auth.domain.entity.AccountState
 import com.elitec.satexplorer.feature.auth.domain.entity.SystemSettingsConfiguration
 import com.elitec.satexplorer.feature.auth.domain.entity.User
@@ -54,41 +56,25 @@ import kotlin.time.ExperimentalTime
 fun InternalNavigationWrapper(
     modifier: Modifier = Modifier
 ) {
-    // For test only
-    val profileConfig = SystemSettingsConfiguration(
-        refreshRate = 200f,
-        isAutoStabilized = false,
-        distanceUnitsMetrics = DistanceUnitsMetrics.KM,
-        velocityUnitsMetrics = VelocityUnitsMetrics.KMHrs
-    )
-    val user = User(
-        Random.nextLong(),
-        "userTest",
-        "test@mail.com",
-        "23if2e",
-        "",
-        UserRank.OPERATOR,
-        AccountState.ACTIVE,
-        profileConfig)
+    val profileConfig = SystemSettingsConfiguration(200f, false, DistanceUnitsMetrics.KM, VelocityUnitsMetrics.KMHrs)
+    val user = User(Random.nextLong(), "userTest", "test@mail.com", "23if2e", "", UserRank.OPERATOR, AccountState.ACTIVE, profileConfig)
+
     val backStack = rememberNavBackStack(InternalRoutes.MainHome)
     val trackingViewModel: SatelliteInputViewModel = koinViewModel()
     val trackingState by trackingViewModel.uiState.collectAsStateWithLifecycle()
+
+    val dashboardViewModel: DashboardViewModel = koinViewModel()
+    LaunchedEffect(trackingState) {
+        dashboardViewModel.syncWithTrackingState(trackingState)
+    }
+    val dashboardState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+
     val navItems = listOf(
-        NavBarItem("Home", Icons.Default.Dashboard, action = {
-            backStack.navigateTo(InternalRoutes.MainHome)
-        }),
-        NavBarItem("Orbit", Icons.Default.RadioButtonUnchecked, action = {
-            backStack.navigateTo(InternalRoutes.Orbit)
-        }),
-        NavBarItem("Search", Icons.Default.Search, action = {
-            backStack.navigateTo(InternalRoutes.Search)
-        }),
-        NavBarItem("Sky", Icons.Default.RemoveRedEye, action = {
-            backStack.navigateTo(InternalRoutes.ARView)
-        }),
-        NavBarItem("Profile", Icons.Default.AccountCircle, action = {
-            backStack.navigateTo(InternalRoutes.Profile)
-        }),
+        NavBarItem("Home", Icons.Default.Dashboard) { backStack.navigateTo(InternalRoutes.MainHome) },
+        NavBarItem("Orbit", Icons.Default.RadioButtonUnchecked) { backStack.navigateTo(InternalRoutes.Orbit) },
+        NavBarItem("Search", Icons.Default.Search) { backStack.navigateTo(InternalRoutes.Search) },
+        NavBarItem("Sky", Icons.Default.RemoveRedEye) { backStack.navigateTo(InternalRoutes.ARView) },
+        NavBarItem("Profile", Icons.Default.AccountCircle) { backStack.navigateTo(InternalRoutes.Profile)}
     )
     Column(
         modifier = modifier.fillMaxSize()
@@ -96,22 +82,12 @@ fun InternalNavigationWrapper(
         NavDisplay(
             backStack = backStack,
             transitionSpec = {
-                slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = tween(250)
-                ) togetherWith slideOutHorizontally(
-                    targetOffsetX = { -it },
-                    animationSpec = tween(250)
-                )
+                slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(250)) togetherWith
+                        slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(250))
             },
             popTransitionSpec = {
-                slideInHorizontally(
-                    initialOffsetX = { -it },
-                    animationSpec = tween(250)
-                ) togetherWith slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(250)
-                )
+                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(250)) togetherWith
+                        slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(250))
             },
             predictivePopTransitionSpec = {
                 slideInHorizontally(
@@ -132,6 +108,8 @@ fun InternalNavigationWrapper(
                 }
                 entry<InternalRoutes.MainHome> {
                     DashBoardScreen(
+                        uiState = dashboardState,
+                        onNotifyOnPass = dashboardViewModel::notifyOnPass,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -158,7 +136,7 @@ fun InternalNavigationWrapper(
             }
         )
         val currentRoute = backStack.lastOrNull()
-        val selectedItemName = when (currentRoute) {
+        val selectedItemName = when (backStack.lastOrNull()) {
             InternalRoutes.MainHome -> "Home"
             InternalRoutes.Orbit -> "Orbit"
             InternalRoutes.Search -> "Search"

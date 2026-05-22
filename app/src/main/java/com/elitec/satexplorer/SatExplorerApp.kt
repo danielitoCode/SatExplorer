@@ -2,6 +2,7 @@ package com.elitec.satexplorer
 
 import android.app.Application
 import com.clerk.api.Clerk
+import com.elitec.satexplorer.feature.alerts.di.analyticsModule
 import com.elitec.satexplorer.feature.satellite.di.satelliteModule
 import com.elitec.satexplorer.feature.tracking.di.trackingModule
 import com.elitec.satexplorer.feature.visualization.di.visualizationModule
@@ -21,6 +22,7 @@ class SatExplorerApp: Application() {
             modules(
                 visualizationModule,
                 trackingModule,
+                analyticsModule,
                 satelliteModule
             )
         }

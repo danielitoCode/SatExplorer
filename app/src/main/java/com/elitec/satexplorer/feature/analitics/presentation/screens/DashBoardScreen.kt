@@ -48,8 +48,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.elitec.satexplorer.R
-import com.elitec.satexplorer.feature.analitics.presentation.screens.model.LiveLogItem
-import com.elitec.satexplorer.feature.analitics.presentation.screens.model.LogType
+import com.elitec.satexplorer.feature.analitics.presentation.model.DashboardUiState
+import com.elitec.satexplorer.feature.analitics.presentation.model.LiveLogItem
+import com.elitec.satexplorer.feature.analitics.presentation.model.LogType
 import com.elitec.satexplorer.infrastructure.presentation.theme.SatExplorerTheme
 import com.elitec.satexplorer.infrastructure.presentation.theme.signalAmber
 import com.elitec.satexplorer.infrastructure.presentation.theme.signalGreen
@@ -58,40 +59,10 @@ import kotlin.random.Random
 
 @Composable
 fun DashBoardScreen(
+    uiState: DashboardUiState,
+    onNotifyOnPass: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val logList = listOf(
-        LiveLogItem(
-            id = Random.nextLong(),
-            tittle = "Log test 1",
-            body = "This is a body of the test # 1",
-            type = LogType.TIME_OUT,
-            time = "13:43"
-        ),
-        LiveLogItem(
-            id = Random.nextLong(),
-            tittle = "Log test 2",
-            body = "This is a body of the test # 3, and his a expensive text , for test the component , you look very good , tel me how look me",
-            type = LogType.TIME_OUT,
-            time = "12:12"
-        ),
-        LiveLogItem(
-            id = Random.nextLong(),
-            tittle = "test 3",
-            body = "This is a body of the test # 1",
-            type = LogType.TIME_OUT,
-            time = "13:43"
-        ),
-        LiveLogItem(
-            id = Random.nextLong(),
-            tittle = "Log test 4",
-            body = "This is a body of the test # 1",
-            type = LogType.TIME_OUT,
-            time = "11:13"
-        )
-    )
-
-
     Column(
         verticalArrangement = Arrangement.spacedBy(20.dp),
         modifier = modifier
@@ -145,7 +116,7 @@ fun DashBoardScreen(
                         )
                         Text(
                             style = MaterialTheme.typography.headlineSmall,
-                            text = "1254"
+                            text = uiState.trackedSatellites.toString()
                         )
                     }
                 }
@@ -185,7 +156,7 @@ fun DashBoardScreen(
                         )
                         Text(
                             style = MaterialTheme.typography.headlineSmall,
-                            text = "3"
+                            text = uiState.visibleTonight.toString()
                         )
                     }
                 }
@@ -232,7 +203,7 @@ fun DashBoardScreen(
                         )
                         Text(
                             style = MaterialTheme.typography.headlineSmall,
-                            text = "3623 Km/h"
+                            text = "${uiState.averageVelocityKmh} Km/h"
                         )
                     }
                 }
@@ -273,7 +244,7 @@ fun DashBoardScreen(
                         )
                         Text(
                             style = MaterialTheme.typography.headlineSmall,
-                            text = "LOW"
+                            text = uiState.congestionAlert
                         )
                     }
                 }
@@ -313,7 +284,7 @@ fun DashBoardScreen(
                 ) {
                     Text(
                         color = MaterialTheme.colorScheme.primary,
-                        text = "T-MINUS" + " 12:32"
+                        text = "T-MINUS ${uiState.proximityAlert?.tMinus ?: "--:--"}"
                     )
                 }
                 Column(
@@ -333,7 +304,7 @@ fun DashBoardScreen(
                         )
                         Text(
                             style = MaterialTheme.typography.headlineSmall,
-                            text = "TIANLONG SPACE STATION"
+                            text = uiState.proximityAlert?.satelliteName ?: "NO SATELLITE SELECTED"
                         )
                     }
                     Row(
@@ -351,7 +322,7 @@ fun DashBoardScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.bodyLarge,
-                                text = "54.32°"
+                                text = uiState.proximityAlert?.azimuth ?: "--"
                             )
                         }
                         Column(
@@ -367,7 +338,7 @@ fun DashBoardScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.bodyLarge,
-                                text = "+ 43.5°"
+                                text = uiState.proximityAlert?.elevation ?: "--"
                             )
                         }
                     }
@@ -386,7 +357,7 @@ fun DashBoardScreen(
                             containerColor = MaterialTheme.colorScheme.background.copy(0.6f),
                             contentColor = MaterialTheme.colorScheme.onBackground
                         ),
-                        onClick = {}
+                        onClick = onNotifyOnPass
                     ) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
@@ -426,7 +397,7 @@ fun DashBoardScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             LiveLogBox(
-                logList = logList,
+                logList = uiState.logs,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -477,7 +448,7 @@ fun DashBoardScreen(
                         Text(
                             fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.bodyMedium,
-                            text = "12 ms",
+                            text = "${uiState.apiResponsivenessMs} ms",
                             color = signalGreen
                         )
                     }
@@ -499,7 +470,7 @@ fun DashBoardScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(end = 34.dp)
+                                .fillMaxWidth(uiState.apiHealthPercent.coerceIn(0.05f, 1f))
                                 .background(
                                     shape = RoundedCornerShape(10.dp),
                                     color = signalGreen
@@ -595,23 +566,6 @@ private fun LiveLogBoxItem(
             }
             Text(
                 text = log.body
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
-fun DashBoardScreenPreview() {
-    SatExplorerTheme {
-        Surface(
-            color = MaterialTheme.colorScheme.background,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            DashBoardScreen(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
             )
         }
     }

@@ -7,22 +7,22 @@ espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
 kotlin = "2.2.10"
-composeBom = "2026.02.01"
+composeBom = "2026.05.01"
 # Networking
-ktor_version="3.4.3"
+ktor_version="3.5.0"
 # Serialization
 serialization = "1.11.0"
 # DI
-koin = "4.1.1"
+koin = "4.2.1"
 # BD
 room = "2.8.4"
 # Navigation
-nav3Core = "1.1.1"
+nav3Core = "1.1.2"
 material3AdaptiveNav3 = "1.3.0-alpha09"
 # KSP
 ksp = "2.2.10-RC2-2.0.2"
 # Maths
-simpleMath = "0.44.0"
+simpleMath = "0.45.0"
 # Iconos
 icons = "1.7.8"
 # Toast
@@ -35,11 +35,13 @@ googleId = "1.2.0"
 # Permission
 permission = "0.37.3"
 # ARview
-camerax = "1.4.1"
+camerax = "1.6.1"
 playServicesLocation = "21.3.0"
 coil = "2.7.0"
 # Cleck Auth
 clerkAuth = "1.0.16"
+# Work Manager
+work = "2.11.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -103,6 +105,8 @@ coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 # Clerk auth
 clerk-api = { module = "com.clerk:clerk-android-api", version.ref = "clerkAuth" }
 clerk-ui = { module = "com.clerk:clerk-android-ui", version.ref = "clerkAuth" }
+# Work Manager
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

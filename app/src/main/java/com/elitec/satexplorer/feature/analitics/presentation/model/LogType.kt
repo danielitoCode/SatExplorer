@@ -1,4 +1,4 @@
-package com.elitec.satexplorer.feature.analitics.presentation.screens.model
+package com.elitec.satexplorer.feature.analitics.presentation.model
 
 enum class LogType {
     TIME_OUT,

@@ -98,6 +98,8 @@ dependencies {
     // Clerk auth
     implementation(libs.clerk.api)
     implementation(libs.clerk.ui)
+    // Work manager
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Test
     testImplementation(libs.junit)
