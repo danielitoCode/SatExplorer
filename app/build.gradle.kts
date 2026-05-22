@@ -95,6 +95,9 @@ dependencies {
     implementation(libs.androidx.camera.view)
     // Ubicación GPS
     implementation(libs.play.services.location)
+    // Clerk auth
+    implementation(libs.clerk.api)
+    implementation(libs.clerk.ui)
 
     // Test
     testImplementation(libs.junit)

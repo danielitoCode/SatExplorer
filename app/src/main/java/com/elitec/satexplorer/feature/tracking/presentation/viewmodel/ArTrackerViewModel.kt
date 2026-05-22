@@ -48,25 +48,27 @@ class ArTrackerViewModel(
     }
 
     private fun generateOrbitPath() {
-        val path = mutableListOf<SkyPosition>()
+        val steps = 120
+        _orbitPath.value = (0..steps).map { i ->
+            val fraction = i.toFloat() / steps
+            val (az, el) = orbitPositionAt(fraction)
+            SkyPosition(
+                azimuth = az,
+                elevation = el,
+                name = "ISS (Estación Espacial)",
+                nextPassTime = "14:32 (Visible por 6 min)"
+            )
+        }
+    }
+
+    private fun orbitPositionAt(fraction: Float): Pair<Float, Float> {
+        val normalized = fraction.coerceIn(0f, 1f)
         val startAz = 100f
         val endAz = 260f
         val maxEl = 55f
-        val steps = 60
-        for (i in 0..steps) {
-            val fraction = i.toFloat() / steps
-            val az = startAz + fraction * (endAz - startAz)
-            val el = (maxEl * Math.sin(fraction * Math.PI)).toFloat()
-            path.add(
-                SkyPosition(
-                    azimuth = az,
-                    elevation = el,
-                    name = "ISS (Estación Espacial)",
-                    nextPassTime = "14:32 (Visible por 6 min)"
-                )
-            )
-        }
-        _orbitPath.value = path
+        val az = startAz + normalized * (endAz - startAz)
+        val el = (maxEl * Math.sin(normalized * Math.PI)).toFloat()
+        return az to el
     }
 
     private fun startSatelliteAnimation() {
@@ -76,17 +78,11 @@ class ArTrackerViewModel(
             while (isActive) {
                 val elapsed = (System.currentTimeMillis() - startTime) % orbitDurationMs
                 val fraction = elapsed.toFloat() / orbitDurationMs
-                
-                val startAz = 100f
-                val endAz = 260f
-                val maxEl = 55f
-                
-                val az = startAz + fraction * (endAz - startAz)
-                val el = (maxEl * Math.sin(fraction * Math.PI)).toFloat()
-                
+
+                val (az, el) = orbitPositionAt(fraction)
+
                 val nextFraction = ((elapsed + 150) % orbitDurationMs) / orbitDurationMs.toFloat()
-                val nextAz = startAz + nextFraction * (endAz - startAz)
-                val nextEl = (maxEl * Math.sin(nextFraction * Math.PI)).toFloat()
+                val (nextAz, nextEl) = orbitPositionAt(nextFraction)
                 
                 _targetSatellite.value = SkyPosition(
                     azimuth = az,

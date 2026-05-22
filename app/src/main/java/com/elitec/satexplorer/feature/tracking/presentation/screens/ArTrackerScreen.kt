@@ -199,7 +199,7 @@ fun ArTrackerContent(
             // FILTRO DE HORIZONTE:
             // Si la inclinación del móvil cae por debajo de 0 grados (apuntando al suelo)
             // o el satélite está teóricamente bajo el horizonte local (Elevación satélite < 0), no pintamos nada.
-            if (cameraElevation > 0f && satellite.elevation >= 0f) {
+            if (cameraElevation >= -5f && satellite.elevation >= 0f) {
                 
                 // Campo de visión (FOV) dinámico de la cámara según la orientación de la pantalla (Portrait vs Landscape)
                 val isLandscape = width > height

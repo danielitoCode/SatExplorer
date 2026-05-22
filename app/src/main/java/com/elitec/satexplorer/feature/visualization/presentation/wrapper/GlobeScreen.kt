@@ -234,15 +234,15 @@ fun GlobeScreen(
             }
             val eccentricity = satellite.tle.eccentricity.coerceIn(0.0, 0.95)
             val minorAxis = orbitRadius * sqrt(1.0 - eccentricity * eccentricity)
-            val phase = trueAnomalyFromMeanAnomaly(
+            val phase = eccentricAnomalyFromMeanAnomaly(
                 meanAnomalyDeg = satellite.tle.meanAnomaly,
                 eccentricity = eccentricity
             )
 
             val orbitRotation = Vector3D(
                 satellite.tle.inclination,
-                satellite.tle.argumentOfPerigee,
-                satellite.tle.raan
+                0.0,
+                satellite.tle.raan + satellite.tle.argumentOfPerigee
             )
             val pos = orbitPointWorld(
                 phase = phase,
@@ -273,7 +273,7 @@ fun GlobeScreen(
                             id = 1,
                             type = RenderObjectType.GLOBE,
                             position = Vector3D(0.0, 0.0, 0.0),
-                            rotation = Vector3D(0.0, 0.0, 0.0),
+                            rotation = orbitRotation,
                             scale = Vector3D(1.0, 1.0, 1.0),
                             isVisible = true,
                             layer = 0
@@ -285,11 +285,7 @@ fun GlobeScreen(
                                 id = 4,
                                 type = RenderObjectType.ORBIT_PATH,
                                 position = Vector3D(0.0, 0.0, 0.0),
-                                rotation = Vector3D(
-                                    satellite.tle.inclination,
-                                    satellite.tle.argumentOfPerigee,
-                                    satellite.tle.raan
-                                ),
+                                rotation = orbitRotation,
                                 scale = Vector3D(orbitRadius, minorAxis, orbitRadius),
                                 isVisible = true,
                                 layer = 1
@@ -348,6 +344,20 @@ fun GlobeScreen(
         }
     }
 }
+
+private fun eccentricAnomalyFromMeanAnomaly(meanAnomalyDeg: Double, eccentricity: Double): Double {
+    val meanAnomaly = Math.toRadians(meanAnomalyDeg)
+    if (eccentricity < 1e-6) return meanAnomaly
+
+    var eccentricAnomaly = meanAnomaly
+    repeat(8) {
+        val f = eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomaly
+        val fp = 1.0 - eccentricity * cos(eccentricAnomaly)
+        eccentricAnomaly -= f / fp
+    }
+    return eccentricAnomaly
+}
+
 
 private fun trueAnomalyFromMeanAnomaly(meanAnomalyDeg: Double, eccentricity: Double): Double {
     val meanAnomaly = Math.toRadians(meanAnomalyDeg)
