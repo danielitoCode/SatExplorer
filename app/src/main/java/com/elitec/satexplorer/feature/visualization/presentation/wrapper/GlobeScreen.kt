@@ -1,6 +1,7 @@
 package com.elitec.satexplorer.feature.visualization.presentation.wrapper
 
 import android.opengl.GLSurfaceView
+import android.opengl.Matrix
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -71,6 +72,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.math.tan
 
 @Composable
 fun GlobeScreen(
@@ -232,19 +234,20 @@ fun GlobeScreen(
             }
             val eccentricity = satellite.tle.eccentricity.coerceIn(0.0, 0.95)
             val minorAxis = orbitRadius * sqrt(1.0 - eccentricity * eccentricity)
-            val phase = Math.toRadians(satellite.tle.meanAnomaly)
+            val phase = trueAnomalyFromMeanAnomaly(
+                meanAnomalyDeg = satellite.tle.meanAnomaly,
+                eccentricity = eccentricity
+            )
 
             val orbitRotation = Vector3D(
                 satellite.tle.inclination,
                 satellite.tle.argumentOfPerigee,
                 satellite.tle.raan
             )
-            val pos = rotateVectorByDegrees(
-                vector = Vector3D(
-                    orbitRadius * cos(phase),
-                    minorAxis * sin(phase),
-                    0.0
-                ),
+            val pos = orbitPointWorld(
+                phase = phase,
+                orbitRadius = orbitRadius,
+                minorAxis = minorAxis,
                 rotation = orbitRotation
             )
 
@@ -346,6 +349,21 @@ fun GlobeScreen(
     }
 }
 
+private fun trueAnomalyFromMeanAnomaly(meanAnomalyDeg: Double, eccentricity: Double): Double {
+    val meanAnomaly = Math.toRadians(meanAnomalyDeg)
+    if (eccentricity < 1e-6) return meanAnomaly
+
+    var eccentricAnomaly = meanAnomaly
+    repeat(8) {
+        val f = eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomaly
+        val fp = 1.0 - eccentricity * cos(eccentricAnomaly)
+        eccentricAnomaly -= f / fp
+    }
+
+    val factor = sqrt((1.0 + eccentricity) / (1.0 - eccentricity))
+    return 2.0 * atan2(factor * tan(eccentricAnomaly / 2.0), 1.0)
+}
+
 @Composable
 private fun SelectedSatelliteBadge(
     satellite: Satellite,
@@ -392,34 +410,18 @@ private fun SelectedSatelliteBadge(
     }
 }
 
-private fun rotateVectorByDegrees(vector: Vector3D, rotation: Vector3D): Vector3D {
-    fun toRad(deg: Double) = deg * (PI / 180.0)
+private fun orbitPointWorld(phase: Double, orbitRadius: Double, minorAxis: Double, rotation: Vector3D): Vector3D {
+    val matrix = FloatArray(16)
+    Matrix.setIdentityM(matrix, 0)
+    Matrix.rotateM(matrix, 0, rotation.x.toFloat(), 1f, 0f, 0f)
+    Matrix.rotateM(matrix, 0, rotation.y.toFloat(), 0f, 1f, 0f)
+    Matrix.rotateM(matrix, 0, rotation.z.toFloat(), 0f, 0f, 1f)
+    Matrix.scaleM(matrix, 0, orbitRadius.toFloat(), minorAxis.toFloat(), orbitRadius.toFloat())
 
-    val rx = toRad(rotation.x)
-    val ry = toRad(rotation.y)
-    val rz = toRad(rotation.z)
-
-    var x = vector.x
-    var y = vector.y
-    var z = vector.z
-
-    // Rotate around X
-    val y1 = y * cos(rx) - z * sin(rx)
-    val z1 = y * sin(rx) + z * cos(rx)
-    y = y1
-    z = z1
-
-    // Rotate around Y
-    val x2 = x * cos(ry) + z * sin(ry)
-    val z2 = -x * sin(ry) + z * cos(ry)
-    x = x2
-    z = z2
-
-    // Rotate around Z
-    val x3 = x * cos(rz) - y * sin(rz)
-    val y3 = x * sin(rz) + y * cos(rz)
-
-    return Vector3D(x3, y3, z)
+    val local = floatArrayOf(cos(phase).toFloat(), sin(phase).toFloat(), 0f, 1f)
+    val world = FloatArray(4)
+    Matrix.multiplyMV(world, 0, matrix, 0, local, 0)
+    return Vector3D(world[0].toDouble(), world[1].toDouble(), world[2].toDouble())
 }
 
 private fun satelliteCameraPose(position: Vector3D): Pair<Float, Float> {
