@@ -10,18 +10,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import com.elitec.satexplorer.feature.auth.presentation.model.AuthenticationProvider
 import com.elitec.satexplorer.feature.auth.presentation.screens.LoginScreen
 import com.elitec.satexplorer.feature.auth.presentation.screens.RegistrationScreen
 import com.elitec.satexplorer.feature.auth.presentation.screens.SplashScreen
+import com.elitec.satexplorer.feature.auth.presentation.viewmodel.AuthViewModel
 import com.elitec.satexplorer.infrastructure.presentation.navigation.utils.navigateBack
 import com.elitec.satexplorer.infrastructure.presentation.navigation.utils.navigateTo
 import com.elitec.satexplorer.infrastructure.presentation.screens.OnBoardScreen
+import org.koin.androidx.compose.koinViewModel
 import java.util.Map.entry
 
 @Composable
@@ -31,11 +37,40 @@ fun MainNavigationWrapper(
 ) {
     val backStack = rememberNavBackStack(MainRoutes.Splash)
 
+    val authViewModel: AuthViewModel = koinViewModel()
+    val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
+
     fun resetRoot(destination: MainRoutes) {
         while (backStack.isNotEmpty()) {
             backStack.removeLastOrNull()
         }
         backStack.navigateTo(destination)
+    }
+
+    fun resolveSessionDisplayName(username: String, email: String): String {
+        val normalizedUser = username.trim()
+        if (normalizedUser.isNotEmpty()) return normalizedUser
+
+        val normalizedEmail = email.trim()
+        if (normalizedEmail.isEmpty()) return "operator"
+        return normalizedEmail.substringBefore("@").ifBlank { normalizedEmail }
+    }
+
+    LaunchedEffect(authUiState.session?.sessionId) {
+        val session = authUiState.session ?: return@LaunchedEffect
+        resetRoot(MainRoutes.Home(session.username.ifBlank { session.email }))
+    }
+
+    LaunchedEffect(authUiState.session?.sessionId) {
+        val session = authUiState.session ?: return@LaunchedEffect
+        resetRoot(
+            MainRoutes.Home(
+                resolveSessionDisplayName(
+                    username = session.username,
+                    email = session.email
+                )
+            )
+        )
     }
 
     Box(
@@ -94,12 +129,25 @@ fun MainNavigationWrapper(
                 entry<MainRoutes.Register> {
                     RegistrationScreen(
                         navigateTo = { route -> backStack.navigateTo(route) },
+                        onRegisterWithClerk = { userName, email, password ->
+                            authViewModel.register(userName, email, password)
+                        },
+                        registerInProgress = authUiState.registerInProgress,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
                 entry<MainRoutes.Login> {
                     LoginScreen(
                         navigateTo = { route -> backStack.navigateTo(route) },
+                        onAuthenticate = { provider, email, password ->
+                            val authProvider = when (provider) {
+                                AuthenticationProvider.ClerkPassword -> "password"
+                                AuthenticationProvider.ClerkGoogle -> "oauth_google"
+                                AuthenticationProvider.ClerkGithub -> "oauth_github"
+                            }
+                            authViewModel.login(email, password, authProvider)
+                        },
+                        authInProgress = authUiState.authInProgress,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -118,3 +166,4 @@ fun MainNavigationWrapper(
         )
     }
 }
+

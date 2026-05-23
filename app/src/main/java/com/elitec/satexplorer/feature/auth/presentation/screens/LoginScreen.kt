@@ -38,12 +38,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.elitec.satexplorer.R
+import com.elitec.satexplorer.feature.auth.presentation.model.AuthenticationProvider
 import com.elitec.satexplorer.infrastructure.presentation.navigation.MainRoutes
 import com.elitec.satexplorer.infrastructure.presentation.theme.SatExplorerTheme
 
 @Composable
 fun LoginScreen(
     navigateTo: (MainRoutes) -> Unit,
+    onAuthenticate: (provider: AuthenticationProvider, email: String, password: String) -> Unit,
+    authInProgress: Boolean,
     modifier: Modifier = Modifier
 ) {
     var email by rememberSaveable { mutableStateOf("") }
@@ -138,7 +141,9 @@ fun LoginScreen(
                 )
                 Button(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = { navigateTo(MainRoutes.Home("UserTest")) }
+                    onClick = {
+                        onAuthenticate(AuthenticationProvider.ClerkPassword, email, pass)
+                    }
                 ) {
                     Text(
                         text = "LOGIN"
@@ -158,7 +163,10 @@ fun LoginScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 5.dp),
-                            onClick = { navigateTo(MainRoutes.Home("UserTest")) }
+                            enabled = !authInProgress,
+                            onClick = {
+                                onAuthenticate(AuthenticationProvider.ClerkGoogle, email, pass)
+                            }
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.Center,
@@ -178,7 +186,10 @@ fun LoginScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 5.dp),
-                            onClick = { navigateTo(MainRoutes.Home("UserTest")) }
+                            enabled = !authInProgress,
+                            onClick = {
+                                onAuthenticate(AuthenticationProvider.ClerkGithub, email, pass)
+                            }
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.Center,
@@ -285,26 +296,5 @@ fun LoginScreen(
                 }
             }
         }
-    }
-}
-
-@Preview(
-    showBackground = true
-)
-@Composable
-fun LoginScreenLightPreview() {
-    SatExplorerTheme(
-        darkTheme = false,
-        dynamicColor = true
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            LoginScreen(
-                navigateTo = {},
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
     }
 }

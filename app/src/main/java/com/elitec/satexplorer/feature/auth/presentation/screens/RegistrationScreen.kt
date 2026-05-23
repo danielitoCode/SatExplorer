@@ -59,6 +59,8 @@ import com.elitec.satexplorer.infrastructure.presentation.theme.textSecondary
 @Composable
 fun RegistrationScreen(
     navigateTo: (MainRoutes) -> Unit,
+    onRegisterWithClerk: (userName: String, email: String, password: String) -> Unit,
+    registerInProgress: Boolean,
     modifier: Modifier = Modifier
 ) {
     var userName by rememberSaveable { mutableStateOf("") }
@@ -388,12 +390,14 @@ fun RegistrationScreen(
         }
         Column {
             Button(
-                enabled = termsChecked && securityEntropyLevel !is SecurityEntropy.Low,
+                enabled = !registerInProgress && termsChecked && securityEntropyLevel !is SecurityEntropy.Low,
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp),
-                onClick = { navigateTo(MainRoutes.Home("userRegistered")) }
+                onClick = {
+                    onRegisterWithClerk(userName, email, pass)
+                }
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -459,23 +463,3 @@ private sealed class SecurityEntropy {
     class Low(message: String): SecurityEntropy()
 }
 
-@Preview(
-    showBackground = true
-)
-@Composable
-fun RegistrationScreenPreview() {
-    SatExplorerTheme(
-        darkTheme = false,
-        dynamicColor = true
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            RegistrationScreen(
-                navigateTo = {},
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-    }
-}
