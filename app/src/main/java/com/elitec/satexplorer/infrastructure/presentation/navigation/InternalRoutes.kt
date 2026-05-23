@@ -20,4 +20,7 @@ sealed interface InternalRoutes: NavKey {
 
     @Serializable
     object Search: InternalRoutes
+
+    @Serializable
+    object Settings: InternalRoutes
 }

@@ -36,6 +36,7 @@ import com.elitec.satexplorer.feature.auth.domain.entity.SystemSettingsConfigura
 import com.elitec.satexplorer.feature.auth.domain.entity.User
 import com.elitec.satexplorer.feature.auth.domain.entity.UserRank
 import com.elitec.satexplorer.feature.auth.presentation.screens.ProfileScreen
+import com.elitec.satexplorer.feature.auth.presentation.screens.SettingsScreen
 import com.elitec.satexplorer.feature.satellite.presentation.screen.SatelliteScreen
 import com.elitec.satexplorer.feature.visualization.domain.entity.Globe
 import com.elitec.satexplorer.feature.tracking.presentation.viewmodel.SatelliteInputViewModel
@@ -54,6 +55,7 @@ import kotlin.time.ExperimentalTime
 @OptIn(ExperimentalTime::class)
 @Composable
 fun InternalNavigationWrapper(
+    onSignOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val profileConfig = SystemSettingsConfiguration(200f, false, DistanceUnitsMetrics.KM, VelocityUnitsMetrics.KMHrs)
@@ -130,6 +132,14 @@ fun InternalNavigationWrapper(
                 entry<InternalRoutes.Profile> {
                     ProfileScreen(
                         user = user,
+                        onOpenSettings = { backStack.navigateTo(InternalRoutes.Settings) },
+                        onSignOut = onSignOut,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                entry<InternalRoutes.Settings> {
+                    SettingsScreen(
+                        onBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.fillMaxSize()
                     )
                 }

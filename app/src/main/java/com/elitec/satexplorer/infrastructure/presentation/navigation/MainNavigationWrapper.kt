@@ -105,6 +105,7 @@ fun MainNavigationWrapper(
                 }
                 entry<MainRoutes.Home> { key ->
                     InternalNavigationWrapper(
+                        onSignOut = { resetRoot(MainRoutes.Login) },
                         modifier = Modifier.fillMaxSize().padding(
                             top = contentPaddingValues.calculateTopPadding(),
                             end = 10.dp,

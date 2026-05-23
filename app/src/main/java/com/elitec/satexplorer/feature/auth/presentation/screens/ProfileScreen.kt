@@ -66,6 +66,8 @@ import kotlin.random.Random
 @Composable
 fun ProfileScreen(
     user: User,
+    onOpenSettings: () -> Unit,
+    onSignOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -92,6 +94,18 @@ fun ProfileScreen(
             profileSettings = user.settingsConfiguration,
             modifier = Modifier.fillMaxWidth()
         )
+        OutlinedButton(
+            modifier = Modifier.align(Alignment.End),
+            onClick = onOpenSettings
+        ) {
+            Text(text = "Open Settings")
+        }
+        OutlinedButton(
+            modifier = Modifier.align(Alignment.End),
+            onClick = onOpenSettings
+        ) {
+            Text(text = "Open Settings")
+        }
         Button(
             border = BorderStroke(2.dp,telemetryRed),
             shape = RoundedCornerShape(10.dp),
@@ -100,7 +114,7 @@ fun ProfileScreen(
                 containerColor = telemetryRed.copy(0.1f),
                 contentColor = telemetryRed
             ),
-            onClick = {}
+            onClick = onSignOut
         ) {
             Text(
                 modifier = Modifier.padding(
@@ -545,39 +559,6 @@ private fun ProfileBox(
             ) {
                 Text(text = "EDIT PROFILE")
             }
-        }
-    }
-}
-
-@Preview
-@Composable
-fun ProfileScreenPreview() {
-    val profileConfig = SystemSettingsConfiguration(
-        refreshRate = 200f,
-        isAutoStabilized = false,
-        distanceUnitsMetrics = DistanceUnitsMetrics.KM,
-        velocityUnitsMetrics = VelocityUnitsMetrics.KMHrs
-    )
-    val user = User(
-        Random.nextLong(),
-        "userTest",
-        "test@mail.com",
-        "23if2e",
-        "",
-        UserRank.OPERATOR,
-        AccountState.ACTIVE,
-        profileConfig)
-    SatExplorerTheme {
-        Surface(
-            color = MaterialTheme.colorScheme.background,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            ProfileScreen(
-                user = user,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-            )
         }
     }
 }
